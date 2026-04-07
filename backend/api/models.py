@@ -43,4 +43,4 @@ class Product(models.Model):
 
     @property
     def is_in_stock(self):
-        return self.stock > 0
+        return self.stock > 0 and not self.del_flag
