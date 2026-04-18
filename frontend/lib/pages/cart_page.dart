@@ -79,7 +79,7 @@ class _CartPageState extends State<CartPage> {
       ),
       body: loading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.green))
+              child: CircularProgressIndicator( color: Color(0xFFE4252A)))
           : Column(
               children: [
                 Expanded(
@@ -102,7 +102,7 @@ class _CartPageState extends State<CartPage> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: Colors.grey[200],
+                                color: const Color(0xFFEEEEEE),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: ClipRRect(
@@ -224,19 +224,19 @@ class _CartPageState extends State<CartPage> {
                               Row(children: [
                                 Text('Promocode applied',
                                     style: TextStyle(
-                                        color: Colors.green[600],
+                                        color: const Color.fromARGB(255, 160, 67, 67),
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500)),
                                 const SizedBox(width: 4),
                                 const Icon(Icons.check_circle,
-                                    color: Colors.green, size: 18),
+                                    color: Color(0xFFE4252A),  size: 18),
                               ])
                             else
                               GestureDetector(
                                 onTap: applyPromo,
                                 child: const Text('Apply',
                                     style: TextStyle(
-                                        color: Colors.green,
+                                        color: Color(0xFFE4252A),
                                         fontWeight: FontWeight.w600)),
                               ),
                           ],
@@ -253,7 +253,7 @@ class _CartPageState extends State<CartPage> {
                         height: 52,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: Color(0xFFE4252A), 
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14)),
                           ),
@@ -281,11 +281,11 @@ class _CartPageState extends State<CartPage> {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: highlight ? Colors.green.withOpacity(0.1) : null,
+          color: highlight ? const Color(0xFFE4252A).withOpacity(0.1) : null,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(icon,
-            size: 18, color: highlight ? Colors.green : Colors.grey[600]),
+            size: 18, color: highlight ? Color(0xFFE4252A) : Colors.grey[600]),
       ),
     );
   }

@@ -3,6 +3,13 @@ import '../models/product_model.dart';
 import '../services/api_service.dart';
 import 'product_detail_page.dart';
 import 'cart_page.dart';
+import 'dart:async';
+
+const Color kBrandRed = Color(0xFFE4252A);
+const Color kBrandRedSoft = Color(0xFFFFE5E6);
+const Color kBgLight = Color(0xFFFDF7F7);
+const Color kTextDark = Color(0xFF1A1A1A);
+const Color kTextMuted = Color(0xFF6B6B6B);
 
 class UserHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -21,8 +28,20 @@ class _UserHomePageState extends State<UserHomePage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  final PageController _carouselController = PageController();
+  int _currentCarouselIndex = 0;
+  Timer? _carouselTimer;
+
   final List<String> categories = [
-    'all', 'electronics', 'fashion', 'home', 'sports', 'books', 'beauty', 'toys', 'food',
+    'all',
+    'electronics',
+    'fashion',
+    'home',
+    'sports',
+    'books',
+    'beauty',
+    'toys',
+    'food',
   ];
 
   @override
@@ -30,12 +49,27 @@ class _UserHomePageState extends State<UserHomePage> {
     super.initState();
     fetchProducts();
     _searchController.addListener(_onSearchChanged);
+    _startCarouselTimer();
+  }
+
+  void _startCarouselTimer() {
+    _carouselTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!_carouselController.hasClients) return;
+      final nextPage = (_currentCarouselIndex + 1) % 4;
+      _carouselController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _carouselTimer?.cancel();
+    _carouselController.dispose();
     super.dispose();
   }
 
@@ -56,14 +90,11 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
   Future<void> fetchProducts() async {
     setState(() => isLoading = true);
-
     final fetchedProducts = selectedCategory == 'all'
         ? await ApiService.getProducts()
         : await ApiService.getProducts(category: selectedCategory);
@@ -75,7 +106,6 @@ class _UserHomePageState extends State<UserHomePage> {
     });
   }
 
-  // Method to build different pages based on selected index
   Widget _buildCurrentPage() {
     switch (_selectedIndex) {
       case 0:
@@ -91,7 +121,6 @@ class _UserHomePageState extends State<UserHomePage> {
     }
   }
 
-  // Home Page Content
   Widget _buildHomePage() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,50 +137,58 @@ class _UserHomePageState extends State<UserHomePage> {
                   const Text(
                     'Discover',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: kBrandRed,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     'Welcome, ${widget.userData['full_name']}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.lightGreenAccent,
-                    ),
+                    style: const TextStyle(fontSize: 13, color: kTextMuted),
                   ),
                 ],
               ),
               Stack(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined,
-                        color: Colors.white, size: 28),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              CartPage(userId: widget.userData['id']),
-                        ),
-                      );
-                    },
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.shopping_cart_outlined,
+                        color: kBrandRed,
+                        size: 24,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CartPage(userId: widget.userData['id']),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   Positioned(
-                    right: 4,
-                    top: 4,
+                    right: 2,
+                    top: 2,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.lightGreenAccent,
+                      decoration: BoxDecoration(
+                        color: kBrandRed,
                         shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       child: const Text(
                         '3',
                         style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -160,7 +197,44 @@ class _UserHomePageState extends State<UserHomePage> {
             ],
           ),
         ),
+        const SizedBox(height: 20),
 
+        // Carousel
+        SizedBox(
+          height: 160,
+          child: PageView(
+            controller: _carouselController,
+            onPageChanged: (index) =>
+                setState(() => _currentCarouselIndex = index),
+            children: [
+              _buildCarouselItem('assets/images/mardani_khel.jpg',
+                  'Mardani Khel', 'Maharashtra Weapon Art'),
+              _buildCarouselItem('assets/images/gatka.jpg', 'Gatka',
+                  'Traditional Sikh Martial Art'),
+              _buildCarouselItem('assets/images/thang_ta.jpg', 'Thang-Ta',
+                  'Manipuri Sword & Spear Art'),
+              _buildCarouselItem('assets/images/kalaripayattu.jpg',
+                  'Kalaripayattu', 'Ancient Kerala Martial Art'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(4, (index) {
+            final isActive = _currentCarouselIndex == index;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              width: isActive ? 24 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isActive ? kBrandRed : kBrandRed.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
         const SizedBox(height: 16),
 
         // Search Bar
@@ -168,24 +242,28 @@ class _UserHomePageState extends State<UserHomePage> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.black.withOpacity(0.02)),
+              boxShadow: [
+                BoxShadow(
+                  color: kBrandRed.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: kTextDark),
               decoration: InputDecoration(
                 hintText: 'Search products...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                prefixIcon: Icon(Icons.search,
-                    color: Colors.white.withOpacity(0.5)),
+                hintStyle: const TextStyle(color: kTextMuted),
+                prefixIcon: const Icon(Icons.search, color: kBrandRed),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white54),
-                        onPressed: () {
-                          _searchController.clear();
-                        },
+                        icon: const Icon(Icons.close, color: kTextMuted),
+                        onPressed: () => _searchController.clear(),
                       )
                     : null,
                 border: InputBorder.none,
@@ -195,28 +273,34 @@ class _UserHomePageState extends State<UserHomePage> {
             ),
           ),
         ),
-
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Categories
         Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Categories',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              Text('See all',
-                  style: TextStyle(
-                      color: Colors.lightGreenAccent.withOpacity(0.8),
-                      fontSize: 14)),
+              const Text(
+                'Categories',
+                style: TextStyle(
+                  color: kTextDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'See all',
+                style: TextStyle(
+                  color: kBrandRed.withOpacity(0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         SizedBox(
           height: 40,
           child: ListView.builder(
@@ -233,25 +317,33 @@ class _UserHomePageState extends State<UserHomePage> {
                     setState(() => selectedCategory = category);
                     fetchProducts();
                   },
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                        horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.lightGreenAccent
-                          : Colors.white.withOpacity(0.08),
+                      color: isSelected ? kBrandRed : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
-                            ? Colors.lightGreenAccent
-                            : Colors.white.withOpacity(0.15),
+                            ? kBrandRed
+                            : Colors.black.withOpacity(0.08),
                       ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: kBrandRed.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : [],
                     ),
                     child: Center(
                       child: Text(
                         category[0].toUpperCase() + category.substring(1),
                         style: TextStyle(
-                          color: isSelected ? Colors.black : Colors.white70,
+                          color: isSelected ? Colors.white : kTextDark,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -263,37 +355,36 @@ class _UserHomePageState extends State<UserHomePage> {
             },
           ),
         ),
-
         const SizedBox(height: 16),
 
         // Products Grid
         Expanded(
           child: isLoading
               ? const Center(
-                  child: CircularProgressIndicator(
-                      color: Colors.lightGreenAccent))
+                  child: CircularProgressIndicator(color: kBrandRed),
+                )
               : filteredProducts.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.search_off,
-                              size: 64,
-                              color: Colors.white.withOpacity(0.3)),
+                              size: 64, color: kBrandRed.withOpacity(0.4)),
                           const SizedBox(height: 12),
                           Text(
                             _searchQuery.isNotEmpty
                                 ? 'No results for "$_searchQuery"'
                                 : 'No products found',
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                fontSize: 16),
+                            style: const TextStyle(
+                              color: kTextMuted,
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
                     )
                   : RefreshIndicator(
-                      color: Colors.lightGreenAccent,
+                      color: kBrandRed,
                       onRefresh: fetchProducts,
                       child: GridView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -318,65 +409,123 @@ class _UserHomePageState extends State<UserHomePage> {
     );
   }
 
-  // Search Page Content
+  Widget _buildCarouselItem(String imagePath, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              imagePath,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: kBrandRedSoft),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color.fromARGB(0, 0, 0, 0),
+                    const Color.fromARGB(255, 0, 0, 0).withOpacity(0.10),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 18,
+              left: 18,
+              right: 18,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: kBrandRed,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.95),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchPage() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search, size: 64, color: Colors.white.withOpacity(0.3)),
+          Icon(Icons.search, size: 64, color: kBrandRed.withOpacity(0.4)),
           const SizedBox(height: 16),
-          Text(
-            'Search Page',
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 18),
-          ),
+          const Text('Search Page',
+              style: TextStyle(color: kTextDark, fontSize: 18)),
           const SizedBox(height: 8),
-          Text(
-            'Coming Soon',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-          ),
+          const Text('Coming Soon',
+              style: TextStyle(color: kTextMuted, fontSize: 14)),
         ],
       ),
     );
   }
 
-  // Favorites Page Content
   Widget _buildFavoritesPage() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.favorite_border, size: 64, color: Colors.white.withOpacity(0.3)),
+          Icon(Icons.favorite_border,
+              size: 64, color: kBrandRed.withOpacity(0.4)),
           const SizedBox(height: 16),
-          Text(
-            'Favorites Page',
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 18),
-          ),
+          const Text('Favorites Page',
+              style: TextStyle(color: kTextDark, fontSize: 18)),
           const SizedBox(height: 8),
-          Text(
-            'Your favorite items will appear here',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-          ),
+          const Text('Your favorite items will appear here',
+              style: TextStyle(color: kTextMuted, fontSize: 14)),
         ],
       ),
     );
   }
 
-  // Profile Page Content
   Widget _buildProfilePage() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.lightGreenAccent,
-            child: Text(
-              widget.userData['full_name'][0].toUpperCase(),
-              style: const TextStyle(
-                fontSize: 36,
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: kBrandRed.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: kBrandRed,
+              child: Text(
+                widget.userData['full_name'][0].toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 36,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -384,7 +533,7 @@ class _UserHomePageState extends State<UserHomePage> {
           Text(
             widget.userData['full_name'],
             style: const TextStyle(
-              color: Colors.white,
+              color: kTextDark,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -392,23 +541,26 @@ class _UserHomePageState extends State<UserHomePage> {
           const SizedBox(height: 8),
           Text(
             widget.userData['email'] ?? 'No email',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 16,
-            ),
+            style: const TextStyle(color: kTextMuted, fontSize: 16),
           ),
           const SizedBox(height: 40),
           ElevatedButton.icon(
             onPressed: () {
-              // Add logout functionality
-              Navigator.pushNamedAndRemoveUntil(context, '/LoginPage', (route) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/LoginPage', (route) => false);
             },
             icon: const Icon(Icons.logout),
             label: const Text('Logout'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.lightGreenAccent,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              backgroundColor: kBrandRed,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shadowColor: kBrandRed.withOpacity(0.4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ],
@@ -419,29 +571,33 @@ class _UserHomePageState extends State<UserHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1B11),
-      body: SafeArea(
-        child: _buildCurrentPage(), // Switch pages here
-      ),
-
-      // Bottom Nav Bar
+      backgroundColor: kBgLight,
+      body: SafeArea(child: _buildCurrentPage()),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF0D1B11),
-          border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: BottomNavigationBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.lightGreenAccent,
-          unselectedItemColor: Colors.white38,
+          selectedItemColor: kBrandRed,
+          unselectedItemColor: kTextMuted,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.home_filled), label: 'Home'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.search), label: 'Search'),
             BottomNavigationBarItem(
                 icon: Icon(Icons.favorite_border), label: 'Favorites'),
             BottomNavigationBarItem(
@@ -473,16 +629,23 @@ class ProductCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: kBrandRed.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+                  const BorderRadius.vertical(top: Radius.circular(18)),
               child: product.imageUrl != null
                   ? Image.network(
                       product.imageUrl!,
@@ -491,16 +654,16 @@ class ProductCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         height: 110,
-                        color: Colors.grey.withOpacity(0.15),
+                        color: kBrandRedSoft,
                         child: const Icon(Icons.image_not_supported,
-                            color: Colors.white24, size: 36),
+                            color: kBrandRed, size: 36),
                       ),
                     )
                   : Container(
                       height: 110,
-                      color: Colors.grey.withOpacity(0.15),
+                      color: kBrandRedSoft,
                       child: const Icon(Icons.shopping_bag,
-                          color: Colors.white24, size: 36),
+                          color: kBrandRed, size: 36),
                     ),
             ),
             Expanded(
@@ -513,9 +676,10 @@ class ProductCard extends StatelessWidget {
                     Text(
                       product.name,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13),
+                        color: kTextDark,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -523,11 +687,12 @@ class ProductCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '\₹${product.price.toStringAsFixed(2)}',
+                          '₹${product.price.toStringAsFixed(2)}',
                           style: const TextStyle(
-                              color: Colors.lightGreenAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
+                            color: kBrandRed,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                         Row(
                           children: [
@@ -536,9 +701,10 @@ class ProductCard extends StatelessWidget {
                             const SizedBox(width: 2),
                             Text(
                               product.rating.toString(),
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
-                                  fontSize: 12),
+                              style: const TextStyle(
+                                color: kTextMuted,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),

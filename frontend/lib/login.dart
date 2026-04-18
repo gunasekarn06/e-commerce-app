@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'register.dart';
 import 'shared_ui.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 import 'services/google_auth_service.dart';
 import 'pages/user_home.dart';
-import 'pages/admin_home.dart';
-import 'dart:html' as html;
+import 'pages/admin_dashboard.dart';
+import 'package:universal_html/html.dart' as html;
+
+const Color kBrandRed = Color(0xFFE4252A);
+const Color kBrandRedSoft = Color(0xFFFFE5E6);
+const Color kBgLight = Color(0xFFFDF7F7);
+const Color kTextDark = Color(0xFF1A1A1A);
+const Color kTextMuted = Color(0xFF6B6B6B);
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -19,61 +25,42 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final GoogleAuthService _googleAuthService = GoogleAuthService();
-
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      _renderGoogleButton();
-    }
+    if (kIsWeb) _renderGoogleButton();
   }
 
   void _renderGoogleButton() {
-    // Give the DOM time to build
     Future.delayed(const Duration(milliseconds: 500), () {
       try {
         final container = html.document.getElementById('google-signin-button');
-        if (container != null) {
-          // The button will be rendered by Google's SDK
-          print('Google Sign-In button container ready');
-        }
+        if (container != null) print('Google Sign-In button container ready');
       } catch (e) {
         print('Error setting up Google button: $e');
       }
     });
   }
 
-  // Existing email/password login
   void handleLogin() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
-
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Please enter both email and password.', Colors.orange);
       return;
     }
-
     setState(() => isLoading = true);
-
     try {
-      final result = await ApiService.loginUser(
-        email: email,
-        password: password,
-      );
-
+      final result = await ApiService.loginUser(email: email, password: password);
       setState(() => isLoading = false);
-
       if (result['success']) {
-        _showSnackBar('Welcome back! Logging you in...', Colors.green);
-
+        _showSnackBar('Welcome back! Logging you in...', kBrandRed);
         final userData = result['data']['user'];
         final isAdmin = result['data']['is_admin'] ?? false;
-
         await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -84,19 +71,10 @@ class _LoginPageState extends State<LoginPage> {
         );
       } else {
         String serverError = result['error'].toString().toLowerCase();
-
-        if (serverError.contains('email') ||
-            serverError.contains('not found')) {
-          _showSnackBar(
-            'This email is not registered. Please create an account.',
-            Colors.blueGrey,
-          );
-        } else if (serverError.contains('password') ||
-            serverError.contains('credentials')) {
-          _showSnackBar(
-            'Incorrect password. Please try again.',
-            Colors.redAccent,
-          );
+        if (serverError.contains('email') || serverError.contains('not found')) {
+          _showSnackBar('This email is not registered. Please create an account.', Colors.blueGrey);
+        } else if (serverError.contains('password') || serverError.contains('credentials')) {
+          _showSnackBar('Incorrect password. Please try again.', Colors.redAccent);
         } else {
           _showSnackBar(result['error'], Colors.red);
         }
@@ -107,25 +85,17 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Simplified Google Sign-In for web
   Future<void> handleGoogleSignIn() async {
     setState(() => isLoading = true);
-
     try {
       final result = await _googleAuthService.signInWithGoogle();
-
       if (result != null) {
-        _showSnackBar('Google Sign-In successful!', Colors.green);
-
+        _showSnackBar('Google Sign-In successful!', kBrandRed);
         await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
-
-        // TODO: Send to backend to verify and get role
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => UserHomePage(userData: result),
-          ),
+          MaterialPageRoute(builder: (context) => UserHomePage(userData: result)),
         );
       } else {
         setState(() => isLoading = false);
@@ -151,190 +121,121 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return GlassScaffold(
       title: "Login",
-      child: GlassCard(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.lock_person_rounded,
-              size: 60,
-              color: Colors.lightGreenAccent,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Welcome Back",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: GlassCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: kBrandRed.withOpacity(0.12),
+                ),
+                child: const Icon(Icons.lock_person_rounded, size: 44, color: kBrandRed),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Sign in to continue",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.7),
+              const SizedBox(height: 20),
+              const Text(
+                "Welcome Back",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 8),
+              Text(
+                "Sign in to continue",
+                style: TextStyle(fontSize: 15, color: Colors.black.withOpacity(0.55)),
+              ),
+              const SizedBox(height: 32),
 
-            // Email Field
-            TextField(
-              controller: emailController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              GlassTextField(
                 hintText: "Email",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                prefixIcon: const Icon(
-                  Icons.email_outlined,
-                  color: Colors.lightGreenAccent,
-                ),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                icon: Icons.email_outlined,
+                controller: emailController,
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Password Field
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              const SizedBox(height: 16),
+              GlassTextField(
                 hintText: "Password",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                prefixIcon: const Icon(
-                  Icons.lock_outline,
-                  color: Colors.lightGreenAccent,
-                ),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                icon: Icons.lock_outline,
+                isPassword: true,
+                controller: passwordController,
+              ),
+              const SizedBox(height: 28),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kBrandRed,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shadowColor: kBrandRed.withOpacity(0.4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: isLoading ? null : handleLogin,
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("LOGIN",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 20),
 
-            // Login Button
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.lightGreenAccent,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.black.withOpacity(0.15))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("OR",
+                        style: TextStyle(color: Colors.black.withOpacity(0.5), fontWeight: FontWeight.w500)),
                   ),
-                ),
-                onPressed: isLoading ? null : handleLogin,
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.black)
-                    : const Text(
-                        "LOGIN",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  Expanded(child: Divider(color: Colors.black.withOpacity(0.15))),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Divider with "OR"
-            Row(
-              children: [
-                Expanded(
-                  child: Divider(
-                    color: Colors.white.withOpacity(0.3),
-                    thickness: 1,
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    side: BorderSide(color: Colors.black.withOpacity(0.1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "OR",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  onPressed: isLoading ? null : handleGoogleSignIn,
+                  icon: SvgPicture.network(
+                    'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
+                    height: 22,
                   ),
-                ),
-                Expanded(
-                  child: Divider(
-                    color: Colors.white.withOpacity(0.3),
-                    thickness: 1,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Google Sign-In Button (Simple fallback)
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  side: BorderSide.none,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed: isLoading ? null : handleGoogleSignIn,
-                icon: Image.network(
-                  'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                  height: 24,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.g_mobiledata, size: 24);
-                  },
-                ),
-                label: const Text(
-                  "Sign in with Google",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  label: const Text("Sign in with Google",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Navigate to Register
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Don't have an account? ",
-                  style: TextStyle(color: Colors.white.withOpacity(0.7)),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RegisterPage(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Don't have an account? ",
+                      style: TextStyle(color: Colors.black.withOpacity(0.65))),
+                  GestureDetector(
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RegisterPage()),
                     ),
+                    child: const Text("Register",
+                        style: TextStyle(color: kBrandRed, fontWeight: FontWeight.bold)),
                   ),
-                  child: const Text(
-                    "Register",
-                    style: TextStyle(
-                      color: Colors.lightGreenAccent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

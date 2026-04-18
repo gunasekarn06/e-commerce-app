@@ -80,16 +80,29 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B11),
       appBar: AppBar(
-        backgroundColor: Colors.black87,
+        // Using the specific dark green from your first design
+        backgroundColor: const Color(0xFF0D1B11),
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Admin Dashboard', style: TextStyle(fontSize: 18)),
+            Text(
+              'Admin Dashboard',
+              style: TextStyle(
+                color: Colors.lightGreenAccent,
+                fontWeight:
+                    FontWeight.w600, // Matching the first design's weight
+                fontSize: 18,
+              ),
+            ),
             Text(
               'Welcome, ${widget.userData['full_name']}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.lightGreenAccent,
+                color: Colors.lightGreenAccent.withOpacity(
+                  0.8,
+                ), // Slightly softer for hierarchy
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -98,7 +111,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           IconButton(
             icon: Icon(
               showDeleted ? Icons.inventory : Icons.delete_outline,
-              color: showDeleted ? Colors.red : Colors.white,
+              color: showDeleted ? Colors.redAccent : Colors.white,
             ),
             onPressed: () {
               setState(() => showDeleted = !showDeleted);

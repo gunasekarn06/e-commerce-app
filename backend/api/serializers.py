@@ -1,16 +1,10 @@
 from rest_framework import serializers
 from .models import User, Product, ProductImage
 
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ['id', 'full_name', 'email', 'password', 'is_admin', 'created_at']
-#         extra_kwargs = {'password': {'write_only': True}}
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'is_admin', 'created_at']
+        fields = ['id', 'full_name', 'email', 'password', 'is_admin', 'created_at']
         extra_kwargs = {
             'password': {'write_only': True}
         }
