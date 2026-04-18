@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 
-class WishlistPage extends StatefulWidget {  // ✅ Changed from SearchPage
-  final Map<String, dynamic> userData;
-  const WishlistPage({super.key, required this.userData});
+const Color kBrandRed = Color(0xFFE4252A);
+const Color kTextDark = Color(0xFF1A1A1A);
+const Color kTextMuted = Color(0xFF6B6B6B);
 
-  @override
-  State<WishlistPage> createState() => _WishlistPageState(); // ✅ Changed
+class WishlistPage extends StatelessWidget {
+  const WishlistPage({super.key});
 
-  }
-
-class _WishlistPageState extends State<WishlistPage> { // ✅ Changed
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text('Wishlist Page', style: TextStyle(color: Colors.white)), // ✅ Changed
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.favorite_border,
+              size: 64, color: kBrandRed.withOpacity(0.4)),
+          const SizedBox(height: 16),
+          const Text('Favorites Page',
+              style: TextStyle(color: kTextDark, fontSize: 18)),
+          const SizedBox(height: 8),
+          const Text('Your favorite items will appear here',
+              style: TextStyle(color: kTextMuted, fontSize: 14)),
+        ],
+      ),
     );
   }
 }

@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 
-class SearchPage extends StatefulWidget {
-  final Map<String, dynamic> userData;
-  const SearchPage({super.key, required this.userData});
+const Color kBrandRed = Color(0xFFE4252A);
+const Color kTextDark = Color(0xFF1A1A1A);
+const Color kTextMuted = Color(0xFF6B6B6B);
 
-  @override
-  State<SearchPage> createState() => _SearchScreenState();
-}
+class SearchPage extends StatelessWidget {
+  const SearchPage({super.key});
 
-class _SearchScreenState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Search Page', style: TextStyle(color: Colors.white)),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search, size: 64, color: kBrandRed.withOpacity(0.4)),
+          const SizedBox(height: 16),
+          const Text('Search Page',
+              style: TextStyle(color: kTextDark, fontSize: 18)),
+          const SizedBox(height: 8),
+          const Text('Coming Soon',
+              style: TextStyle(color: kTextMuted, fontSize: 14)),
+        ],
+      ),
     );
   }
 }

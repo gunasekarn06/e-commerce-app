@@ -3,9 +3,6 @@ import '../models/product_model.dart';
 import '../services/api_service.dart';
 import 'product_detail_page.dart';
 import 'cart_page.dart';
-import 'search_page.dart';
-import 'wishlist_page.dart';
-import 'profile_page.dart';
 import 'dart:async';
 
 const Color kBrandRed = Color(0xFFE4252A);
@@ -14,16 +11,15 @@ const Color kBgLight = Color(0xFFFDF7F7);
 const Color kTextDark = Color(0xFF1A1A1A);
 const Color kTextMuted = Color(0xFF6B6B6B);
 
-class UserHomePage extends StatefulWidget {
+class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
-  const UserHomePage({super.key, required this.userData});
+  const HomePage({super.key, required this.userData});
 
   @override
-  State<UserHomePage> createState() => _UserHomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _UserHomePageState extends State<UserHomePage> {
-  int _selectedIndex = 0;
+class _HomePageState extends State<HomePage> {
   List<Product> products = [];
   List<Product> filteredProducts = [];
   bool isLoading = true;
@@ -92,10 +88,6 @@ class _UserHomePageState extends State<UserHomePage> {
     }).toList();
   }
 
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-  }
-
   Future<void> fetchProducts() async {
     setState(() => isLoading = true);
     final fetchedProducts = selectedCategory == 'all'
@@ -109,22 +101,8 @@ class _UserHomePageState extends State<UserHomePage> {
     });
   }
 
-  Widget _buildCurrentPage() {
-    switch (_selectedIndex) {
-      case 0:
-        return _buildHomePage();
-      case 1:
-        return const SearchPage();
-      case 2:
-        return const WishlistPage();
-      case 3:
-        return ProfilePage(userData: widget.userData);
-      default:
-        return _buildHomePage();
-    }
-  }
-
-  Widget _buildHomePage() {
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -462,52 +440,6 @@ class _UserHomePageState extends State<UserHomePage> {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-
-
-
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kBgLight,
-      body: SafeArea(child: _buildCurrentPage()),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: kBrandRed,
-          unselectedItemColor: kTextMuted,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.home_filled), label: 'Home'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.search), label: 'Search'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.favorite_border), label: 'Favorites'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
         ),
       ),
