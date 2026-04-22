@@ -67,12 +67,15 @@ class _LoginPageState extends State<LoginPage> {
         _showSnackBar('Welcome back!', kBrandRed);
 
         final data = (result['data'] as Map<String, dynamic>?) ?? {};
-        final userData = (data['user'] as Map<String, dynamic>?) ?? {};
+        final userData = (data['user'] is Map<String, dynamic>)
+            ? (data['user'] as Map<String, dynamic>)
+            : data;
 
-        final bool isAdmin =
-            email.toLowerCase() == 'admin@gmail.com' ||
-            _isAdminFlag(data['is_admin']) ||
-            _isAdminFlag(userData['is_admin']);
+        final bool isAdmin = _isAdminFlag(data['is_admin']) ||
+            _isAdminFlag(userData['is_admin']) ||
+            email.toLowerCase() == 'admin@gmail.com';
+
+        debugPrint('Login result: isAdmin=$isAdmin, data=$data');
 
         await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
