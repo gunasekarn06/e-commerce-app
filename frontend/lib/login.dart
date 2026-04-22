@@ -72,10 +72,7 @@ class _LoginPageState extends State<LoginPage> {
             : data;
 
         final bool isAdmin = _isAdminFlag(data['is_admin']) ||
-            _isAdminFlag(userData['is_admin']) ||
-            email.toLowerCase() == 'admin@gmail.com';
-
-        debugPrint('Login result: isAdmin=$isAdmin, data=$data');
+            _isAdminFlag(userData['is_admin']);
 
         await Future.delayed(const Duration(milliseconds: 500));
         if (!mounted) return;
