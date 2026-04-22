@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/cart_service.dart';
 
 const Color kBrandRed = Color(0xFFE4252A);
 const Color kTextDark = Color(0xFF1A1A1A);
@@ -110,6 +111,7 @@ class _CartPageState extends State<CartPage> {
         );
       }
     } else {
+      CartService().notifyCartChange(CartChangeEvent(productId: productId, isAdded: false));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

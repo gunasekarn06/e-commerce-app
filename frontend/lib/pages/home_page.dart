@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/api_service.dart';
 import '../services/wishlist_service.dart';
+import '../services/cart_service.dart';
 import 'product_detail_page.dart';
 import 'cart_page.dart';
 import 'dart:async';
@@ -27,10 +28,13 @@ class _HomePageState extends State<HomePage> {
   String selectedCategory = 'all';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  int cartCount = 0;
 
   final PageController _carouselController = PageController();
   int _currentCarouselIndex = 0;
   Timer? _carouselTimer;
+
+  late StreamSubscription<CartChangeEvent> _cartSubscription;
 
   final List<String> categories = [
     'all',
@@ -48,8 +52,12 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     fetchProducts();
+    fetchCartCount();
     _searchController.addListener(_onSearchChanged);
     _startCarouselTimer();
+    _cartSubscription = CartService().cartChangeStream.listen((event) {
+      fetchCartCount();
+    });
   }
 
   void _startCarouselTimer() {
@@ -70,6 +78,7 @@ class _HomePageState extends State<HomePage> {
     _searchController.dispose();
     _carouselTimer?.cancel();
     _carouselController.dispose();
+    _cartSubscription.cancel();
     super.dispose();
   }
 
@@ -100,6 +109,11 @@ class _HomePageState extends State<HomePage> {
       _applyFilters();
       isLoading = false;
     });
+  }
+
+  Future<void> fetchCartCount() async {
+    final count = await ApiService.getCartCount(widget.userData['id']);
+    setState(() => cartCount = count);
   }
 
   Widget _buildHomePage() {
@@ -163,9 +177,9 @@ class _HomePageState extends State<HomePage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
-                      child: const Text(
-                        '3',
-                        style: TextStyle(
+                      child: Text(
+                        cartCount.toString(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -468,11 +482,19 @@ class ProductCard extends StatefulWidget {
 
 class _ProductCardState extends State<ProductCard> {
   late bool _isInWishlist;
+  late StreamSubscription<WishlistChangeEvent> _wishlistSubscription;
 
   @override
   void initState() {
     super.initState();
     _checkWishlistStatus();
+    _wishlistSubscription = WishlistService().wishlistChangeStream.listen((event) {
+      if (event.productId == widget.product.id) {
+        setState(() {
+          _isInWishlist = event.isAdded;
+        });
+      }
+    });
   }
 
   Future<void> _checkWishlistStatus() async {
@@ -548,6 +570,12 @@ class _ProductCardState extends State<ProductCard> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _wishlistSubscription.cancel();
+    super.dispose();
   }
 
   @override

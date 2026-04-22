@@ -81,6 +81,7 @@ class _WishlistPageState extends State<WishlistPage> {
         setState(() {
           wishlistItems.removeWhere((item) => item['product_id'] == productId);
         });
+        WishlistService().notifyWishlistChange(WishlistChangeEvent(productId: productId, isAdded: false));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
