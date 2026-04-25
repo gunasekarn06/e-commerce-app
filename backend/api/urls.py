@@ -8,9 +8,16 @@ urlpatterns = [
     path('users/<int:pk>/', views.get_user, name='get_user'),
     path('users/create/', views.create_user, name='create_user'),
     path('users/update/<int:pk>/', views.update_user, name='update_user'),
+    path('products/admin/', views.get_all_products_admin, name='admin_products'),
     path('users/partial/<int:pk>/', views.partial_update_user, name='partial_update_user'),
     path('users/delete/<int:pk>/', views.delete_user, name='delete_user'),
     path('login/', views.login_user, name='login_user'),
+
+    # Category routes
+    path('categories/', views.get_categories, name='get_categories'),
+    path('categories/create/', views.create_category, name='create_category'),
+    path('categories/update/<int:pk>/', views.update_category, name='update_category'),
+    path('categories/delete/<int:pk>/', views.delete_category, name='delete_category'),
 
     # Product routes (User)
     path('products/', views.get_products, name='get_products'),

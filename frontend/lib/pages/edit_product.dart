@@ -27,28 +27,21 @@ class _EditProductPageState extends State<EditProductPage> {
   final _stockController = TextEditingController();
   final _skuController = TextEditingController();
 
-  String? _selectedCategory;
+  int? _selectedCategoryId;
   bool _isLoading = false;
+  bool _isLoadingCategories = false;
   XFile? _selectedImageFile;
   Uint8List? _selectedImageBytes;
   bool _removeExistingImage = false;
   final ImagePicker _picker = ImagePicker();
 
-  final List<String> _categories = [
-    'electronics',
-    'fashion',
-    'home',
-    'sports',
-    'books',
-    'beauty',
-    'toys',
-    'food',
-  ];
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
     _initializeFields();
+    _fetchCategories();
   }
 
   void _initializeFields() {
@@ -57,8 +50,38 @@ class _EditProductPageState extends State<EditProductPage> {
     _priceController.text = widget.product.price.toString();
     _stockController.text = widget.product.stock.toString();
     _skuController.text = widget.product.skuId?.toString() ?? '';
-    _selectedCategory = widget.product.category;
+    // _selectedCategoryId will be set after categories are fetched
     _removeExistingImage = false;
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final result = await ApiService.getCategories();
+      if (result['success']) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(result['data']);
+          // Set selected category ID based on product's category name
+          final category = _categories.firstWhere(
+            (cat) => cat['name'] == widget.product.category,
+            orElse: () => <String, dynamic>{},
+          );
+          if (category.isNotEmpty) {
+            _selectedCategoryId = category['id'];
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load categories: ${result['error']}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load categories: $e')),
+      );
+    } finally {
+      setState(() => _isLoadingCategories = false);
+    }
   }
 
   @override
@@ -143,7 +166,7 @@ class _EditProductPageState extends State<EditProductPage> {
   Future<void> _updateProduct() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCategory == null) {
+    if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a category')),
       );
@@ -185,7 +208,7 @@ class _EditProductPageState extends State<EditProductPage> {
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
       price: price,
-      category: _selectedCategory!,
+      categoryId: _selectedCategoryId!,
       imageFile: _selectedImageFile,
       stock: stock,
       skuId: skuId,
@@ -357,43 +380,45 @@ class _EditProductPageState extends State<EditProductPage> {
               const SizedBox(height: 16),
 
               // Category Dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  labelStyle: const TextStyle(color: Colors.lightGreenAccent),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.lightGreenAccent),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-                  ),
-                ),
-                dropdownColor: Colors.black87,
-                style: const TextStyle(color: Colors.white),
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(
-                      category[0].toUpperCase() + category.substring(1),
+              _isLoadingCategories
+                  ? const Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCategoryId,
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        labelStyle: const TextStyle(color: Colors.lightGreenAccent),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.lightGreenAccent),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        ),
+                      ),
+                      dropdownColor: Colors.black87,
                       style: const TextStyle(color: Colors.white),
+                      items: _categories.map((category) {
+                        return DropdownMenuItem<int>(
+                          value: category['id'],
+                          child: Text(
+                            category['display_name'] ?? category['name'],
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value);
+                      },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a category';
+                        }
+                        return null;
+                      },
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCategory = value);
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
-                },
-              ),
               const SizedBox(height: 16),
 
               // Image Picker

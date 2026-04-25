@@ -1,13 +1,52 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User, Product, Cart, CartItem, Wishlist, WishlistItem
-from .serializers import UserSerializer, ProductSerializer, WishlistSerializer, WishlistItemSerializer
+from django.db.models import Q
+from .models import User, Product, Cart, CartItem, Wishlist, WishlistItem, Category
+from .serializers import UserSerializer, ProductSerializer, WishlistSerializer, WishlistItemSerializer, CategorySerializer
 import logging
 
 logger = logging.getLogger(__name__)
 
-# GET all users
+# ================= CATEGORY APIs =================
+
+@api_view(['GET'])
+def get_categories(request):
+    categories = Category.objects.filter(is_active=True)
+    serializer = CategorySerializer(categories, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def create_category(request):
+    serializer = CategorySerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+def update_category(request, pk):
+    try:
+        category = Category.objects.get(pk=pk)
+        serializer = CategorySerializer(category, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Category.DoesNotExist:
+        return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['DELETE'])
+def delete_category(request, pk):
+    try:
+        category = Category.objects.get(pk=pk)
+        category.is_active = False  # Soft delete
+        category.save()
+        return Response({'message': 'Category deactivated successfully'})
+    except Category.DoesNotExist:
+        return Response({'error': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# ================= USER APIs =================
 @api_view(['GET'])
 def get_users(request):
     # ... rest of your code stays the same
@@ -113,7 +152,19 @@ def get_products(request):
     # Optional filtering
     category = request.GET.get('category')
     if category:
-        products = products.filter(category=category)
+        category = category.strip()
+        if category.lower() == 'all':
+            pass
+        elif category.isdigit():
+            products = products.filter(category_id=int(category))
+        else:
+            category_obj = Category.objects.filter(
+                Q(name__iexact=category) | Q(display_name__iexact=category)
+            ).first()
+            if category_obj:
+                products = products.filter(category_id=category_obj.id)
+            else:
+                products = products.none()
     
     serializer = ProductSerializer(products, many=True)
     return Response(serializer.data)

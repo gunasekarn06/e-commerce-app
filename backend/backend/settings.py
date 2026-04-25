@@ -146,7 +146,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
-#postgreSQL
+# postgreSQL
 DATABASES = {
     'default': dj_database_url.config(
         # This will use the DATABASE_URL environment variable from Render.

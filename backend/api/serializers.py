@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Product, ProductImage, Wishlist, WishlistItem
+from .models import User, Product, ProductImage, Wishlist, WishlistItem, Category
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,6 +10,12 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'display_name', 'description', 'is_active', 'created_at', 'updated_at']
+
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -17,14 +23,17 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_display_name = serializers.CharField(source='category.display_name', read_only=True)
 
     class Meta:
         model = Product
-        fields = [
-            'id', 'name', 'description', 'price', 'category',
-            'image_url', 'images', 'stock', 'rating', 'del_flag',
-            'created_at', 'updated_at', 'created_by'
-        ]
+        fields = '__all__'
+        # fields = [
+        #     'id', 'name', 'description', 'price', 'category', 'category_name', 'category_display_name',
+        #     'image_url', 'images', 'stock', 'rating', 'del_flag',
+        #     'created_at', 'updated_at', 'created_by'
+        # ]
         read_only_fields = ['created_at', 'updated_at', 'created_by']
 
     def to_representation(self, instance):

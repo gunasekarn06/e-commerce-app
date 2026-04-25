@@ -21,31 +21,42 @@ class _AddProductPageState extends State<AddProductPage> {
   final _stockController = TextEditingController();
   final _skuController = TextEditingController();
 
-  String? _selectedCategory;
+  int? _selectedCategoryId;
   bool _isLoading = false;
   XFile? _selectedImageFile;
   Uint8List? _selectedImageBytes;
   final ImagePicker _picker = ImagePicker();
 
-  final List<String> _categories = [
-    'electronics',
-    'fashion',
-    'home',
-    'sports',
-    'books',
-    'beauty',
-    'toys',
-    'food',
-  ];
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoadingCategories = true;
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    _priceController.dispose();
-    _stockController.dispose();
-    _skuController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _fetchCategories();
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final result = await ApiService.getCategories();
+      if (result['success']) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(result['data']);
+          _isLoadingCategories = false;
+        });
+      } else {
+        setState(() => _isLoadingCategories = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load categories')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoadingCategories = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error loading categories')),
+      );
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -120,7 +131,7 @@ class _AddProductPageState extends State<AddProductPage> {
   Future<void> _submitProduct() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCategory == null) {
+    if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a category')),
       );
@@ -161,7 +172,7 @@ class _AddProductPageState extends State<AddProductPage> {
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
       price: price,
-      category: _selectedCategory!,
+      categoryId: _selectedCategoryId!,
       imageFile: _selectedImageFile,
       stock: stock,
       skuId: skuId,
@@ -332,43 +343,45 @@ class _AddProductPageState extends State<AddProductPage> {
               const SizedBox(height: 16),
 
               // Category Dropdown
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  labelStyle: const TextStyle(color: Colors.lightGreenAccent),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.lightGreenAccent),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-                  ),
-                ),
-                dropdownColor: Colors.black87,
-                style: const TextStyle(color: Colors.white),
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(
-                      category[0].toUpperCase() + category.substring(1),
+              _isLoadingCategories
+                  ? const Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCategoryId,
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        labelStyle: const TextStyle(color: Colors.lightGreenAccent),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.lightGreenAccent),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        ),
+                      ),
+                      dropdownColor: Colors.black87,
                       style: const TextStyle(color: Colors.white),
+                      items: _categories.map((category) {
+                        return DropdownMenuItem<int>(
+                          value: category['id'],
+                          child: Text(
+                            category['display_name'] ?? category['name'],
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value);
+                      },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a category';
+                        }
+                        return null;
+                      },
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCategory = value);
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
-                },
-              ),
               const SizedBox(height: 16),
 
               // Image Picker

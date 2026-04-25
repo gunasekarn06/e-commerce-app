@@ -5,9 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';
-  // static const String baseUrl = 'http://127.0.0.1:8000/api';     // mobile
-  // static const String baseUrl = 'http://10.0.2.2:8000/api';      // chrome
+
+
+  static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL
+  // static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost for iOS
+
+
+  // static const String baseUrl = 'http://10.0.2.2:8000/api';      // mobile emulator (Android Studio)
   // static const String baseUrl = 'http://192.168.1.11/api';         // wifi network 
   // static const String baseUrl = 'http://192.168.1.11:8000/api'; // Added :8000
 
@@ -197,11 +201,14 @@ class ApiService {
 
   static Future<List<Product>> getProducts({String? category}) async {
     try {
-      String url = '$baseUrl/products/';
-      if (category != null && category.isNotEmpty) url += '?category=$category';
+      final uri = Uri.parse('$baseUrl/products/').replace(
+        queryParameters: category != null && category.isNotEmpty
+            ? {'category': category}
+            : null,
+      );
 
-      _log('Fetching products from: $url');
-      final response = await http.get(Uri.parse(url));
+      _log('Fetching products from: $uri');
+      final response = await http.get(uri);
       
       _log('Products response status: ${response.statusCode}');
       
@@ -277,7 +284,7 @@ class ApiService {
     required String name,
     required String description,
     required double price,
-    required String category,
+    required int categoryId,
     XFile? imageFile,
     required int stock,
     double rating = 0.0,
@@ -295,7 +302,7 @@ class ApiService {
       request.fields['name'] = name;
       request.fields['description'] = description;
       request.fields['price'] = price.toString();
-      request.fields['category'] = category;
+      request.fields['category'] = categoryId.toString();
       request.fields['stock'] = stock.toString();
       request.fields['rating'] = rating.toString();
       if (skuId != null) {
@@ -340,7 +347,7 @@ class ApiService {
     required String name,
     required String description,
     required double price,
-    required String category,
+    required int categoryId,
     XFile? imageFile,
     required int stock,
     double rating = 0.0,
@@ -359,7 +366,7 @@ class ApiService {
       request.fields['name'] = name;
       request.fields['description'] = description;
       request.fields['price'] = price.toString();
-      request.fields['category'] = category;
+      request.fields['category'] = categoryId.toString();
       request.fields['stock'] = stock.toString();
       request.fields['rating'] = rating.toString();
       if (skuId != null) {
@@ -570,5 +577,101 @@ class ApiService {
       _logError('Error fetching exchange rate: $e');
     }
     return 83.0;
+  }
+
+  // ================= CATEGORY APIs =================
+
+  static Future<Map<String, dynamic>> getCategories() async {
+    try {
+      final uri = Uri.parse('$baseUrl/categories/');
+      _log('Fetching categories from: $uri');
+      final response = await http.get(uri);
+      _log('Categories response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else if (response.statusCode == 404) {
+        return {
+          'success': false,
+          'error': 'Categories endpoint not found on the server. Deploy the latest backend changes.',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'HTTP ${response.statusCode}: ${response.body}',
+        };
+      }
+    } catch (e) {
+      _logError('Error fetching categories: $e');
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> createCategory({
+    required String name,
+    required String displayName,
+    String? description,
+  }) async {
+    try {
+      _log('Creating category: $name');
+      final response = await http.post(
+        Uri.parse('$baseUrl/categories/create/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'display_name': displayName,
+          'description': description ?? '',
+        }),
+      );
+
+      _log('Create category response: ${response.statusCode}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else if (response.statusCode == 404) {
+        return {
+          'success': false,
+          'error': 'Create category endpoint not found on the server. Deploy the latest backend changes.',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'HTTP ${response.statusCode}: ${response.body}',
+        };
+      }
+    } catch (e) {
+      _logError('Error creating category: $e');
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteCategory(int categoryId) async {
+    try {
+      _log('Deleting category ID: $categoryId');
+      final response = await http.delete(
+        Uri.parse('$baseUrl/categories/delete/$categoryId/'),
+      );
+
+      _log('Delete category response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return {'success': true};
+      } else if (response.statusCode == 404) {
+        return {
+          'success': false,
+          'error': 'Delete category endpoint not found on the server. Deploy the latest backend changes.',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'HTTP ${response.statusCode}: ${response.body}',
+        };
+      }
+    } catch (e) {
+      _logError('Error deleting category: $e');
+      return {'success': false, 'error': 'Network error: $e'};
+    }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/api_service.dart';
 import 'admin_product.dart';
+import 'components/admin_categories.dart';
 import 'edit_product.dart';
 
 class AdminHomePage extends StatefulWidget {
@@ -190,18 +191,41 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddProductPage(userData: widget.userData),
-            ),
-          );
-        },
-        backgroundColor: Colors.lightGreenAccent,
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Product'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'add-product-fab',
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AddProductPage(userData: widget.userData),
+                ),
+              );
+              await fetchProducts();
+            },
+            backgroundColor: Colors.lightGreenAccent,
+            foregroundColor: Colors.black,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Product'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'manage-categories-fab',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AdminCategoriesPage(),
+                ),
+              );
+            },
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            icon: const Icon(Icons.category),
+            label: const Text('Manage Categories'),
+          ),
+        ],
       ),
     );
   }

@@ -36,28 +36,47 @@ class _HomePageState extends State<HomePage> {
 
   late StreamSubscription<CartChangeEvent> _cartSubscription;
 
-  final List<String> categories = [
-    'all',
-    'electronics',
-    'fashion',
-    'home',
-    'sports',
-    'books',
-    'beauty',
-    'toys',
-    'food',
-  ];
+  List<Map<String, dynamic>> categories = [];
 
   @override
   void initState() {
     super.initState();
     fetchProducts();
     fetchCartCount();
+    _fetchCategories();
     _searchController.addListener(_onSearchChanged);
     _startCarouselTimer();
     _cartSubscription = CartService().cartChangeStream.listen((event) {
       fetchCartCount();
     });
+  }
+
+  Future<void> _fetchCategories() async {
+    try {
+      final result = await ApiService.getCategories();
+      if (result['success']) {
+        setState(() {
+          categories = [
+            {'name': 'all', 'display_name': 'All'},
+            ...List<Map<String, dynamic>>.from(result['data'])
+          ];
+        });
+      } else {
+        // Keep only the default All category when categories fail to load
+        setState(() {
+          categories = [
+            {'name': 'all', 'display_name': 'All'},
+          ];
+        });
+      }
+    } catch (e) {
+      // Keep only the default All category when categories fail to load
+      setState(() {
+        categories = [
+          {'name': 'all', 'display_name': 'All'},
+        ];
+      });
+    }
   }
 
   void _startCarouselTimer() {
@@ -100,9 +119,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> fetchProducts() async {
     setState(() => isLoading = true);
-    final fetchedProducts = selectedCategory == 'all'
+    final categoryFilter = selectedCategory.trim().toLowerCase();
+    final fetchedProducts = categoryFilter == 'all' || categoryFilter.isEmpty
         ? await ApiService.getProducts()
-        : await ApiService.getProducts(category: selectedCategory);
+        : await ApiService.getProducts(category: categoryFilter);
 
     setState(() {
       products = fetchedProducts;
@@ -304,12 +324,13 @@ class _HomePageState extends State<HomePage> {
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final category = categories[index];
-              final isSelected = selectedCategory == category;
+              final isSelected = selectedCategory == category['name'];
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
                   onTap: () {
-                    setState(() => selectedCategory = category);
+                    final categoryName = category['name']?.toString() ?? '';
+                    setState(() => selectedCategory = categoryName.toLowerCase());
                     fetchProducts();
                   },
                   child: AnimatedContainer(
@@ -336,7 +357,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: Center(
                       child: Text(
-                        category[0].toUpperCase() + category.substring(1),
+                        category['display_name'] ?? category['name'],
                         style: TextStyle(
                           color: isSelected ? Colors.white : kTextDark,
                           fontWeight: FontWeight.w600,
