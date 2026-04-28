@@ -3,6 +3,8 @@ from django.db import models
 class User(models.Model):
     full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=25, blank=True, null=True)
+    image_url = models.URLField(max_length=500, blank=True, null=True)
     password = models.CharField(max_length=100)
     is_admin = models.BooleanField(default=False)  # ADD THIS
     created_at = models.DateTimeField(auto_now_add=True)

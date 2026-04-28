@@ -133,7 +133,22 @@ def create_user(request):
 def update_user(request, pk):
     try:
         user = User.objects.get(pk=pk)
-        serializer = UserSerializer(user, data=request.data)
+        data = request.data.copy()
+
+        if 'image' in request.FILES:
+            image_file = request.FILES['image']
+            import os
+            from django.core.files.storage import default_storage
+
+            ext = os.path.splitext(image_file.name)[1]
+            filename = f"users/profile_{user.id}{ext}"
+            file_path = default_storage.save(filename, image_file)
+            image_url = default_storage.url(file_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            data['image_url'] = image_url
+
+        serializer = UserSerializer(user, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -146,7 +161,22 @@ def update_user(request, pk):
 def partial_update_user(request, pk):
     try:
         user = User.objects.get(pk=pk)
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        data = request.data.copy()
+
+        if 'image' in request.FILES:
+            image_file = request.FILES['image']
+            import os
+            from django.core.files.storage import default_storage
+
+            ext = os.path.splitext(image_file.name)[1]
+            filename = f"users/profile_{user.id}{ext}"
+            file_path = default_storage.save(filename, image_file)
+            image_url = default_storage.url(file_path)
+            if not image_url.startswith('http'):
+                image_url = request.build_absolute_uri(image_url)
+            data['image_url'] = image_url
+
+        serializer = UserSerializer(user, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

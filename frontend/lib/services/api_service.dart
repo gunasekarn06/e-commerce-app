@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 
 class ApiService {
 
-  static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL - Use this for deployed backend
-  // static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost chrome (Flutter web)
+  // static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL - Use this for deployed backend
+  static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost chrome (Flutter web)
 
   // static const String baseUrl = 'http://10.0.2.2:8000/api';        // mobile emulator (Android Studio)
   // static const String baseUrl = 'http://192.168.1.11/api';         // wifi network 
@@ -192,6 +192,54 @@ class ApiService {
         'success': false,
         'error': 'Network error: $e',
       };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUser({
+    required int id,
+    String? fullName,
+    String? email,
+    String? phone,
+    XFile? imageFile,
+  }) async {
+    try {
+      _log('Updating user ID: $id');
+
+      final uri = Uri.parse('$baseUrl/users/partial/$id/');
+      final request = http.MultipartRequest('PATCH', uri);
+
+      if (fullName != null) {
+        request.fields['full_name'] = fullName;
+      }
+      if (email != null) {
+        request.fields['email'] = email;
+      }
+      if (phone != null) {
+        request.fields['phone'] = phone;
+      }
+      if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'image',
+          bytes,
+          filename: imageFile.name,
+        ));
+      }
+
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+
+      _log('Update user response: ${response.statusCode}');
+      _log('Response data: $responseData');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseData);
+        return {'success': true, 'data': data};
+      }
+      return {'success': false, 'error': 'HTTP ${response.statusCode}: $responseData'};
+    } catch (e) {
+      _logError('Error updating user: $e');
+      return {'success': false, 'error': 'Network error: $e'};
     }
   }
 

@@ -4,7 +4,7 @@ from .models import User, Product, ProductImage, Wishlist, WishlistItem, Categor
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'password', 'is_admin', 'created_at']
+        fields = ['id', 'full_name', 'email', 'phone', 'image_url', 'password', 'is_admin', 'created_at']
         extra_kwargs = {
             'password': {'write_only': True}
         }

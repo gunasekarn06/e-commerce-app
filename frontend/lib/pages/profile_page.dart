@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'edit_profile.dart';
 
 // ===== Brand Colors =====
 const Color kBrandRed = Color(0xFFE4252A);
@@ -8,15 +9,32 @@ const Color kTextMuted = Color(0xFF6B6B6B);
 const Color kSurface = Color(0xFFF7F7F9);
 const Color kCardBorder = Color(0xFFEDEDF0);
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> userData;
   const ProfilePage({super.key, required this.userData});
 
-  String get _fullName => (userData['full_name'] ?? userData['name'] ?? 'User').toString();
-  String get _email => (userData['email'] ?? 'No email').toString();
-  String get _phone => (userData['phone'] ?? '+1 000 000 0000').toString();
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late Map<String, dynamic> _userData;
+
+  String get _fullName =>
+      (_userData['full_name'] ?? _userData['name'] ?? 'User').toString();
+  String get _email => (_userData['email'] ?? 'No email').toString();
+  String get _phone =>
+      (_userData['phone'] ?? '+1 000 000 0000').toString();
+  String? get _imageUrl =>
+      (_userData['image_url'] ?? _userData['photoUrl'])?.toString();
   String get _initial =>
       _fullName.trim().isNotEmpty ? _fullName.trim()[0].toUpperCase() : 'U';
+
+  @override
+  void initState() {
+    super.initState();
+    _userData = Map<String, dynamic>.from(widget.userData);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +54,18 @@ class ProfilePage extends StatelessWidget {
                   icon: Icons.person_outline_rounded,
                   title: 'Edit Profile',
                   subtitle: 'Update your personal info',
-                  onTap: () {
-                   
+                  onTap: () async {
+                    final updatedUser = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditProfilePage(userData: _userData),
+                      ),
+                    );
+                    if (updatedUser is Map<String, dynamic>) {
+                      setState(() {
+                        _userData = updatedUser;
+                      });
+                    }
                   },
                 ),
                 _ActionItem(
@@ -143,14 +171,19 @@ class ProfilePage extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 48,
                   backgroundColor: Colors.white,
-                  child: Text(
-                    _initial,
-                    style: const TextStyle(
-                      fontSize: 36,
-                      color: kBrandRed,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  backgroundImage: _imageUrl != null && _imageUrl!.isNotEmpty
+                      ? NetworkImage(_imageUrl!)
+                      : null,
+                  child: _imageUrl == null || _imageUrl!.isEmpty
+                      ? Text(
+                          _initial,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            color: kBrandRed,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(height: 14),
@@ -175,6 +208,21 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ],
               ),
+              if (_phone.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.phone_android_rounded,
+                        color: Colors.white70, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      _phone,
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ],
