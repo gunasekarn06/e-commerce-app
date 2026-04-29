@@ -28,16 +28,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
 
+  late Map<String, dynamic> _profileData;
   final ImagePicker _picker = ImagePicker();
   XFile? _selectedImageFile;
   Uint8List? _selectedImageBytes;
   bool _isLoading = false;
 
   String get _currentImageUrl =>
-      (widget.userData['image_url'] ?? widget.userData['photoUrl'])?.toString() ?? '';
+      (_profileData['image_url'] ?? _profileData['photoUrl'])?.toString() ?? '';
 
   String get _initial {
-    final name = widget.userData['full_name'] ?? widget.userData['name'] ?? '';
+    final name = _profileData['full_name'] ?? _profileData['name'] ?? '';
     final trimmed = name.toString().trim();
     return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : 'U';
   }
@@ -45,15 +46,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
+    _profileData = Map<String, dynamic>.from(widget.userData);
     _fullNameController = TextEditingController(
-      text: widget.userData['full_name']?.toString() ?? '',
+      text: _profileData['full_name']?.toString() ?? '',
     );
     _emailController = TextEditingController(
-      text: widget.userData['email']?.toString() ?? '',
+      text: _profileData['email']?.toString() ?? '',
     );
     _phoneController = TextEditingController(
-      text: widget.userData['phone']?.toString() ?? '',
+      text: _profileData['phone']?.toString() ?? '',
     );
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userId = widget.userData['id'];
+    if (userId == null) return;
+
+    final updatedUser = await ApiService.getUser(id: userId is int ? userId : int.tryParse(userId.toString()) ?? 0);
+    if (updatedUser != null && mounted) {
+      setState(() {
+        _profileData = updatedUser;
+        _fullNameController.text = updatedUser['full_name']?.toString() ?? '';
+        _emailController.text = updatedUser['email']?.toString() ?? '';
+        _phoneController.text = updatedUser['phone']?.toString() ?? '';
+      });
+    }
   }
 
   @override

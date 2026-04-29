@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
@@ -24,11 +26,15 @@ class _CartPageState extends State<CartPage> {
   bool promoApplied = false;
   double deliveryFee = 5.00;
   double discountPercent = 0;
+  late final StreamSubscription<CartChangeEvent> _cartSubscription;
 
   @override
   void initState() {
     super.initState();
     loadCart();
+    _cartSubscription = CartService().cartChangeStream.listen((event) {
+      loadCart();
+    });
   }
 
   Future<void> loadCart() async {
@@ -121,6 +127,12 @@ class _CartPageState extends State<CartPage> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _cartSubscription.cancel();
+    super.dispose();
   }
 
   @override

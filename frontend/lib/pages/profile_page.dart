@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import 'edit_profile.dart';
 
 // ===== Brand Colors =====
@@ -19,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late Map<String, dynamic> _userData;
+  bool _isLoading = true;
 
   String get _fullName =>
       (_userData['full_name'] ?? _userData['name'] ?? 'User').toString();
@@ -34,6 +36,25 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _userData = Map<String, dynamic>.from(widget.userData);
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userId = widget.userData['id'];
+    if (userId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final updatedUser = await ApiService.getUser(id: userId is int ? userId : int.tryParse(userId.toString()) ?? 0);
+    if (updatedUser != null && mounted) {
+      setState(() {
+        _userData = updatedUser;
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override

@@ -1,10 +1,20 @@
+import os
+import random
+
 from django.db import models
+
+
+def product_image_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1] or '.jpg'
+    random_name = random.randint(100000, 999999)
+    return f"product/{random_name}{ext}"
+
 
 class User(models.Model):
     full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=25, blank=True, null=True)
-    image_url = models.URLField(max_length=500, blank=True, null=True)
+    image_url = models.ImageField(upload_to='users/', blank=True, null=True)
     password = models.CharField(max_length=100)
     is_admin = models.BooleanField(default=False)  # ADD THIS
     created_at = models.DateTimeField(auto_now_add=True)
@@ -34,7 +44,7 @@ class Product(models.Model):
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    image_url = models.URLField(max_length=500, blank=True, null=True)
+    image_url = models.ImageField(upload_to=product_image_upload_path, blank=True, null=True)
     stock = models.IntegerField(default=0)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     del_flag = models.BooleanField(default=False)  # False = Active, True = Deleted
@@ -54,7 +64,7 @@ class Product(models.Model):
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image_url = models.URLField(max_length=500, blank=True, null=True)
+    image_url = models.ImageField(upload_to=product_image_upload_path, blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

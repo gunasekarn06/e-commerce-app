@@ -1,3 +1,7 @@
+import os
+import random
+import logging
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -6,7 +10,7 @@ from django.db.models import Q
 from django.db.utils import OperationalError, ProgrammingError
 from .models import User, Product, Cart, CartItem, Wishlist, WishlistItem, Category
 from .serializers import UserSerializer, ProductSerializer, WishlistSerializer, WishlistItemSerializer, CategorySerializer
-import logging
+from django.contrib.auth.hashers import make_password, check_password
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +110,7 @@ def delete_category(request, pk):
 def get_users(request):
     # ... rest of your code stays the same
     users = User.objects.all()
-    serializer = UserSerializer(users, many=True)
+    serializer = UserSerializer(users, many=True, context={'request': request})
     return Response(serializer.data)
 
 # GET single user
@@ -114,7 +118,7 @@ def get_users(request):
 def get_user(request, pk):
     try:
         user = User.objects.get(pk=pk)
-        serializer = UserSerializer(user)
+        serializer = UserSerializer(user, context={'request': request})
         return Response(serializer.data)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -122,11 +126,28 @@ def get_user(request, pk):
 # POST - Create user (Register)
 @api_view(['POST'])
 def create_user(request):
-    serializer = UserSerializer(data=request.data)
+    data = request.data.copy()
+    password = data.get('password')
+    if password:
+        data['password'] = make_password(password)
+
+    serializer = UserSerializer(data=data, context={'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def _attach_user_image_to_data(data, request):
+    image_file = request.FILES.get('image') or request.FILES.get('image_url')
+    if not image_file:
+        return data
+
+    ext = os.path.splitext(image_file.name)[1] or '.jpg'
+    filename = f"{random.randint(100000, 999999)}{ext}"
+    uploaded_file = SimpleUploadedFile(filename, image_file.read(), content_type=image_file.content_type)
+
+    data['image_url'] = uploaded_file
+    return data
 
 # PUT - Update full user
 @api_view(['PUT'])
@@ -134,21 +155,12 @@ def update_user(request, pk):
     try:
         user = User.objects.get(pk=pk)
         data = request.data.copy()
+        data = _attach_user_image_to_data(data, request)
 
-        if 'image' in request.FILES:
-            image_file = request.FILES['image']
-            import os
-            from django.core.files.storage import default_storage
+        if data.get('password'):
+            data['password'] = make_password(data['password'])
 
-            ext = os.path.splitext(image_file.name)[1]
-            filename = f"users/profile_{user.id}{ext}"
-            file_path = default_storage.save(filename, image_file)
-            image_url = default_storage.url(file_path)
-            if not image_url.startswith('http'):
-                image_url = request.build_absolute_uri(image_url)
-            data['image_url'] = image_url
-
-        serializer = UserSerializer(user, data=data, partial=True)
+        serializer = UserSerializer(user, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -162,21 +174,12 @@ def partial_update_user(request, pk):
     try:
         user = User.objects.get(pk=pk)
         data = request.data.copy()
+        data = _attach_user_image_to_data(data, request)
 
-        if 'image' in request.FILES:
-            image_file = request.FILES['image']
-            import os
-            from django.core.files.storage import default_storage
+        if data.get('password'):
+            data['password'] = make_password(data['password'])
 
-            ext = os.path.splitext(image_file.name)[1]
-            filename = f"users/profile_{user.id}{ext}"
-            file_path = default_storage.save(filename, image_file)
-            image_url = default_storage.url(file_path)
-            if not image_url.startswith('http'):
-                image_url = request.build_absolute_uri(image_url)
-            data['image_url'] = image_url
-
-        serializer = UserSerializer(user, data=data, partial=True)
+        serializer = UserSerializer(user, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -211,13 +214,21 @@ def login_user(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    if user.password != password:
+    password_matches = check_password(password, user.password)
+    if not password_matches:
+        if user.password == password:
+            # Legacy plain-text password support: migrate to hashed password on first login.
+            user.password = make_password(password)
+            user.save(update_fields=['password'])
+            password_matches = True
+
+    if not password_matches:
         return Response(
             {'error': 'Incorrect password. Please try again.'},
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    serializer = UserSerializer(user)
+    serializer = UserSerializer(user, context={'request': request})
     admin_flag = user.is_admin or user.email.strip().lower() == 'admin@gmail.com'
 
     return Response({
@@ -251,7 +262,7 @@ def get_products(request):
                 else:
                     products = products.none()
 
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
     except (OperationalError, ProgrammingError):
         logger.exception("Product/category schema is unavailable. Run migrations on the deployed server.")
@@ -269,7 +280,7 @@ def get_all_products_admin(request):
     """Admin: Get ALL products including soft-deleted ones"""
     try:
         products = Product.objects.all().select_related('category')
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
     except (OperationalError, ProgrammingError):
         logger.exception("Product/category schema is unavailable. Run migrations on the deployed server.")
@@ -287,7 +298,7 @@ def get_product_detail(request, pk):
     """Get single product details"""
     try:
         product = Product.objects.get(pk=pk, del_flag=False)
-        serializer = ProductSerializer(product)
+        serializer = ProductSerializer(product, context={'request': request})
         return Response(serializer.data)
     except Product.DoesNotExist:
         return Response(
@@ -314,19 +325,15 @@ def create_product(request):
 
             if 'image' in request.FILES:
                 image_file = request.FILES['image']
-                import os
-                from django.core.files.storage import default_storage
+                ext = os.path.splitext(image_file.name)[1] or '.jpg'
+                filename = f"{random.randint(100000, 999999)}{ext}"
+                data['image_url'] = SimpleUploadedFile(
+                    filename,
+                    image_file.read(),
+                    content_type=image_file.content_type,
+                )
 
-                ext = os.path.splitext(image_file.name)[1]
-                filename = f"products/{data.get('name', 'product').replace(' ', '_')}_{data.get('sku_id', 'no_sku')}{ext}"
-
-                file_path = default_storage.save(filename, image_file)
-                image_url = default_storage.url(file_path)
-                if not image_url.startswith('http'):
-                    image_url = request.build_absolute_uri(image_url)
-                data['image_url'] = image_url
-
-            serializer = ProductSerializer(data=data)
+            serializer = ProductSerializer(data=data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -354,23 +361,18 @@ def update_product(request, pk):
         # Handle file upload
         if 'image' in request.FILES:
             image_file = request.FILES['image']
-            # Save the image file and get the URL
-            import os
-            from django.conf import settings
-            from django.core.files.storage import default_storage
-            
-            # Create filename
-            ext = os.path.splitext(image_file.name)[1]
-            filename = f"products/{data.get('name', product.name).replace(' ', '_')}_{data.get('sku_id', 'no_sku')}{ext}"
-            
-            # Save file
-            file_path = default_storage.save(filename, image_file)
-            image_url = default_storage.url(file_path)
-            if not image_url.startswith('http'):
-                image_url = request.build_absolute_uri(image_url)
-            data['image_url'] = image_url
+            ext = os.path.splitext(image_file.name)[1] or '.jpg'
+            filename = f"{random.randint(100000, 999999)}{ext}"
+            data['image_url'] = SimpleUploadedFile(
+                filename,
+                image_file.read(),
+                content_type=image_file.content_type,
+            )
+
+        if data.get('remove_image') in ['true', 'True', True]:
+            data['image_url'] = None
         
-        serializer = ProductSerializer(product, data=data, partial=True)
+        serializer = ProductSerializer(product, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -511,13 +513,20 @@ def get_cart(request, user_id):
     data = []
 
     for item in items:
+        image_url = None
+        if item.product.image_url:
+            try:
+                image_url = request.build_absolute_uri(item.product.image_url.url)
+            except Exception:
+                image_url = str(item.product.image_url)
+
         data.append({
             "id": item.id,
             "product_id": item.product.id,
             "product_name": item.product.name,
             "price": item.product.price,
             "quantity": item.quantity,
-            "image": item.product.image_url
+            "image": image_url,
         })
 
     return Response(data)
@@ -683,17 +692,25 @@ def get_wishlist(request, user_id):
                 category_value = product.category.display_name or product.category.name
             except Exception:
                 category_value = None
+
+            image_url = None
+            if product.image_url:
+                try:
+                    image_url = request.build_absolute_uri(product.image_url.url)
+                except Exception:
+                    image_url = str(product.image_url)
+
             data.append({
                 'id': item.id,
                 'product_id': product.id,
                 'product_name': product.name,
                 'price': product.price,
-                'image': product.image_url,
+                'image': image_url,
                 'rating': product.rating,
                 'category': category_value,
-                'created_at': item.created_at
+                'created_at': item.created_at,
             })
-        
+
         return Response(data)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)

@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 
 class ApiService {
 
-  static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL - Use this for deployed backend
-  // static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost chrome (Flutter web)
+  // static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL - Use this for deployed backend
+  static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost chrome (Flutter web)
 
   // static const String baseUrl = 'http://10.0.2.2:8000/api';        // mobile emulator (Android Studio)
   // static const String baseUrl = 'http://192.168.1.11/api';         // wifi network 
@@ -288,6 +288,26 @@ class ApiService {
       _logError('Error fetching admin products: $e');
     }
     return [];
+  }
+
+  static Future<Map<String, dynamic>?> getUser({
+    required int id,
+  }) async {
+    try {
+      _log('Fetching user profile for ID: $id');
+      final response = await http.get(Uri.parse('$baseUrl/users/$id/'));
+      _log('Get user response: ${response.statusCode}');
+      _log('Get user body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is Map<String, dynamic> ? data : null;
+      }
+      return null;
+    } catch (e) {
+      _logError('Error fetching user profile: $e');
+      return null;
+    }
   }
 
   static Future<Product?> getProductDetail(int id) async {
