@@ -61,9 +61,11 @@ class _EditProductPageState extends State<EditProductPage> {
       if (result['success']) {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(result['data']);
-          // Set selected category ID based on product's category name
           final category = _categories.firstWhere(
-            (cat) => cat['name'] == widget.product.category,
+            (cat) =>
+                cat['id'] == widget.product.categoryId ||
+                cat['name'] == widget.product.category ||
+                cat['display_name'] == widget.product.category,
             orElse: () => <String, dynamic>{},
           );
           if (category.isNotEmpty) {

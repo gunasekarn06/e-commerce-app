@@ -1,39 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import '../models/product_model.dart';
-import 'package:flutter/foundation.dart';
-
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 class ApiService {
 
-  static const String _localBaseUrl = 'http://127.0.0.1:8000/api'; // localhost chrome (Flutter web)
-  static const String _renderBaseUrl = 'https://e-commerce-app-spee.onrender.com/api'; // Render live backend
-  static const String _baseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-  static const bool _useRenderServer = bool.fromEnvironment('USE_RENDER_SERVER', defaultValue: false);
-  static const bool _useLocalServer = bool.fromEnvironment('USE_LOCAL_SERVER', defaultValue: false);
-
-  /// Web builds default to Render so Chrome/dev hosting does not accidentally
-  /// point at 127.0.0.1 unless explicitly requested.
-  ///
-  /// Supported overrides:
-  /// flutter run -d chrome --dart-define=USE_LOCAL_SERVER=true
-  /// flutter run --dart-define=USE_RENDER_SERVER=true
-  /// flutter run --dart-define=API_BASE_URL=https://example.com/api
-  static String get baseUrl {
-    if (_baseUrlOverride.isNotEmpty) {
-      return _baseUrlOverride.endsWith('/')
-          ? _baseUrlOverride.substring(0, _baseUrlOverride.length - 1)
-          : _baseUrlOverride;
-    }
-
-    if (_useLocalServer) return _localBaseUrl;
-    if (_useRenderServer) return _renderBaseUrl;
-    if (kIsWeb) return _renderBaseUrl;
-
-    return kReleaseMode ? _renderBaseUrl : _localBaseUrl;
-  }
+  static const String baseUrl = 'https://e-commerce-app-spee.onrender.com/api';  // Render URL - Use this for deployed backend
+  // static const String baseUrl = 'http://127.0.0.1:8000/api';     // localhost chrome (Flutter web)
 
   // static const String baseUrl = 'http://10.0.2.2:8000/api';        // mobile emulator (Android Studio)
   // static const String baseUrl = 'http://192.168.1.11/api';         // wifi network 
