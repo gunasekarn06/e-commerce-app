@@ -1,9 +1,18 @@
 import os
 import random
 import logging
-from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework.decorators import api_view
+import json
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.auth.decorators import login_required
+
 from rest_framework import status
 # from django.db import IntegrityError, transaction
 from django.db import (IntegrityError, transaction)
@@ -1347,3 +1356,112 @@ def delete_address(request, address_id):
         return Response({'error': 'Address not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+def orders_list(request):
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return JsonResponse({'error': 'user_id required'}, status=400)
+
+    orders = (Order.objects
+              .filter(user_id=user_id)
+              .prefetch_related('items__product')
+              .order_by('-created_at'))
+
+    data = []
+    for o in orders:
+        items = []
+        for item in o.items.all():
+            img = None
+            if item.product and item.product.image_url:
+                img = request.build_absolute_uri(item.product.image_url.url)
+            items.append({
+                'id':            item.id,
+                'product_name':  item.product_name,
+                'product_price': str(item.product_price),
+                'quantity':      item.quantity,
+                'image_url':     img,
+            })
+        data.append({
+            'id':                o.id,
+            'status':            o.status,
+            'payment_method':    o.payment_method,
+            'total_amount':      str(o.total_amount),
+            'total_items':       o.total_items,
+            'first_name':        o.first_name,
+            'last_name':         o.last_name,
+            'address_line_1':    o.address_line_1,
+            'address_line_2':    o.address_line_2,
+            'city':              o.city,
+            'state':             o.state,
+            'postal_code':       o.postal_code,
+            'country':           o.country,
+            'tracking_number':   o.tracking_number,
+            'current_location':  o.current_location,
+            'estimated_delivery': str(o.estimated_delivery) if o.estimated_delivery else None,
+            'created_at':        o.created_at.isoformat(),
+            'updated_at':        o.updated_at.isoformat(),
+            'items':             items,
+        })
+    return JsonResponse(data, safe=False)
+
+
+# def cancel_order(request, order_id):
+#     if request.method != 'PATCH':
+#         return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+#     try:
+#         # Optimization: Only get the order if it belongs to the logged-in user
+#         order = Order.objects.get(id=order_id, user=request.user)
+        
+#         if order.status not in (Order.STATUS_PLACED, Order.STATUS_CONFIRMED):
+#             return JsonResponse(
+#                 {'error': 'Cannot cancel after shipment'}, status=400)
+        
+#         order.status = Order.STATUS_CANCELLED
+#         order.save()
+#         return JsonResponse({'message': 'Order cancelled successfully'})
+        
+#     except Order.DoesNotExist:
+#         return JsonResponse({'error': 'Order not found or unauthorized'}, status=404)
+
+
+
+@api_view(['PATCH'])
+@csrf_exempt
+def cancel_order(request, order_id):
+    user_id = request.data.get('user_id')
+
+    if not user_id:
+        return Response(
+            {'error': 'user_id is required'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        with transaction.atomic():
+            order = Order.objects.get(id=order_id, user_id=user_id)
+
+            if order.status not in (Order.STATUS_PLACED, Order.STATUS_CONFIRMED):
+                return Response(
+                    {'error': 'Cannot cancel after shipment'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Restore stock for each item in the order
+            order_items = OrderItem.objects.filter(order=order).select_related('product')
+            for item in order_items:
+                if item.product:  # product may be null (SET_NULL on delete)
+                    item.product.stock += item.quantity
+                    item.product.save(update_fields=['stock', 'updated_at'])
+
+            order.status = Order.STATUS_CANCELLED
+            order.save(update_fields=['status', 'updated_at'])
+
+        return Response({'message': 'Order cancelled successfully'})
+
+    except Order.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or unauthorized'},
+            status=status.HTTP_404_NOT_FOUND,
+        )

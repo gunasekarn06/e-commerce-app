@@ -2,7 +2,7 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import '../wishlist_page.dart';
 import '../profile_page.dart';
-import '../search_page.dart';
+import '../order_page.dart';
 import '../home_page.dart';
 
 class UserHomePage extends StatefulWidget {
@@ -58,7 +58,7 @@ class _UserHomePageState extends State<UserHomePage> {
           index: _selectedIndex,
           children: [
             HomePage(userData: widget.userData),
-            const SearchPage(),
+            OrderPage(userId: widget.userData['id']),
             WishlistPage(
               userData: widget.userData,
               onContinueShopping: () => _onItemTapped(0),
@@ -78,9 +78,9 @@ class _UserHomePageState extends State<UserHomePage> {
         animationCurve: Curves.easeOutCubic,
         onTap: _onItemTapped,
         items: [
-          _buildNavItem(Icons.home_filled, 'Home', 0),
-          _buildNavItem(Icons.search, 'Search', 1),
-          _buildNavItem(Icons.favorite_border, 'Wishlist', 2),
+          _buildNavItem(Icons.home_outlined, 'Home', 0),
+          _buildNavItem(Icons.local_shipping_outlined, 'Orders', 1),
+          _buildNavItem(Icons.favorite_outline, 'Wishlist', 2),
           _buildNavItem(Icons.person_outline, 'Profile', 3),
         ],
       ),

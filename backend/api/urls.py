@@ -53,4 +53,8 @@ urlpatterns = [
     path('addresses/create/', views.create_address, name='create_address'),
     path('addresses/<int:address_id>/update/', views.update_address, name='update_address'),
     path('addresses/<int:address_id>/delete/', views.delete_address, name='delete_address'),
+
+    #orders
+    path('orders/', views.orders_list, name='orders_list'),
+    path('orders/<int:order_id>/cancel/', views.cancel_order, name='cancel_order'),
 ]

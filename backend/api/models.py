@@ -133,14 +133,61 @@ class Address(models.Model):
         super().save(*args, **kwargs)
 
 
+# class Order(models.Model):
+#     STATUS_PLACED = 'placed'
+#     STATUS_CANCELLED = 'cancelled'
+#     PAYMENT_UPI = 'upi'
+#     PAYMENT_COD = 'cod'
+
+#     STATUS_CHOICES = [
+#         (STATUS_PLACED, 'Placed'),
+#         (STATUS_CANCELLED, 'Cancelled'),
+#     ]
+
+#     PAYMENT_CHOICES = [
+#         (PAYMENT_UPI, 'UPI'),
+#         (PAYMENT_COD, 'Cash on Delivery'),
+#     ]
+#     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+#     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+#     total_items = models.PositiveIntegerField(default=0)
+#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PLACED)
+#     first_name = models.CharField(max_length=100, blank=True)
+#     last_name = models.CharField(max_length=100, blank=True)
+#     address_line_1 = models.CharField(max_length=255, blank=True)
+#     address_line_2 = models.CharField(max_length=255, blank=True)
+#     city = models.CharField(max_length=100, blank=True)
+#     state = models.CharField(max_length=100, blank=True)
+#     postal_code = models.CharField(max_length=20, blank=True)
+#     country = models.CharField(max_length=100, blank=True)
+#     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default=PAYMENT_COD)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+
+#     class Meta:
+#         ordering = ['-created_at']
+
+#     def __str__(self):
+#         return f"Order {self.id} - {self.user.email}"
+
 class Order(models.Model):
-    STATUS_PLACED = 'placed'
+    STATUS_PLACED    = 'placed'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_SHIPPED   = 'shipped'
+    STATUS_OUT       = 'out_for_delivery'
+    STATUS_DELIVERED = 'delivered'
     STATUS_CANCELLED = 'cancelled'
+
     PAYMENT_UPI = 'upi'
     PAYMENT_COD = 'cod'
 
     STATUS_CHOICES = [
-        (STATUS_PLACED, 'Placed'),
+        (STATUS_PLACED,    'Order Placed'),
+        (STATUS_CONFIRMED, 'Confirmed'),
+        (STATUS_SHIPPED,   'Shipped'),
+        (STATUS_OUT,       'Out for Delivery'),
+        (STATUS_DELIVERED, 'Delivered'),
         (STATUS_CANCELLED, 'Cancelled'),
     ]
 
@@ -148,20 +195,30 @@ class Order(models.Model):
         (PAYMENT_UPI, 'UPI'),
         (PAYMENT_COD, 'Cash on Delivery'),
     ]
-    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total_items = models.PositiveIntegerField(default=0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PLACED)
-    first_name = models.CharField(max_length=100, blank=True)
-    last_name = models.CharField(max_length=100, blank=True)
+
+    address        = models.ForeignKey('Address', on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name='orders')
+    user           = models.ForeignKey('User', on_delete=models.CASCADE,
+                                       related_name='orders')
+    total_amount   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_items    = models.PositiveIntegerField(default=0)
+    status         = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                      default=STATUS_PLACED)
+    first_name     = models.CharField(max_length=100, blank=True)
+    last_name      = models.CharField(max_length=100, blank=True)
     address_line_1 = models.CharField(max_length=255, blank=True)
     address_line_2 = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
-    country = models.CharField(max_length=100, blank=True)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default=PAYMENT_COD)
+    city           = models.CharField(max_length=100, blank=True)
+    state          = models.CharField(max_length=100, blank=True)
+    postal_code    = models.CharField(max_length=20,  blank=True)
+    country        = models.CharField(max_length=100, blank=True)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES,
+                                      default=PAYMENT_COD)
+    # tracking
+    tracking_number    = models.CharField(max_length=100, blank=True)
+    current_location   = models.CharField(max_length=255, blank=True)   # e.g. "Sorting Hub, Chennai"
+    estimated_delivery = models.DateField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
