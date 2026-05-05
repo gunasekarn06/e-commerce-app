@@ -61,9 +61,34 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'product_name', 'product_price', 'quantity', 'created_at']
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'product_price',
+            'quantity',
+            'image_url',
+            'created_at',
+        ]
+
+    def get_image_url(self, obj):
+        product = getattr(obj, 'product', None)
+        if not product or not getattr(product, 'image_url', None):
+            return None
+
+        try:
+            url = product.image_url.url
+        except Exception:
+            return None
+
+        request = self.context.get('request')
+        if request is not None:
+            return request.build_absolute_uri(url)
+        return url
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -86,6 +111,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'postal_code',
             'country',
             'payment_method',
+            'tracking_number',
+            'current_location',
+            'estimated_delivery',
             'items',
             'created_at',
             'updated_at',

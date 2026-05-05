@@ -1064,7 +1064,12 @@ def checkout_cart(request):
 @api_view(['GET'])
 def get_orders(request, user_id):
     try:
-        orders = Order.objects.filter(user_id=user_id).prefetch_related('items').all()
+        orders = (
+            Order.objects
+            .filter(user_id=user_id)
+            .prefetch_related('items__product')
+            .all()
+        )
         serializer = OrderSerializer(orders, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
@@ -1374,7 +1379,10 @@ def orders_list(request):
         for item in o.items.all():
             img = None
             if item.product and item.product.image_url:
-                img = request.build_absolute_uri(item.product.image_url.url)
+                try:
+                    img = request.build_absolute_uri(item.product.image_url.url)
+                except Exception:
+                    img = None
             items.append({
                 'id':            item.id,
                 'product_name':  item.product_name,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../services/api_service.dart';
 
 // ── Theme constants ───────────────────────────────────────────────────────────
 
@@ -8,13 +9,11 @@ const Color kBrandRed = Color(0xFFE4252A);
 const Color kBrandRedDark = Color(0xFFB81E22);
 const Color kTextDark = Color(0xFF1A1A1A);
 const Color kTextMuted = Color(0xFF6B6B6B);
-const Color kBg        = Color(0xFFF5F5F5);
-const Color kCard      = Colors.white;
+const Color kBg = Color(0xFFF5F5F5);
+const Color kCard = Colors.white;
 const Color kSurface = Color(0xFFF7F7F9);
 const Color kCardBorder = Color(0xFFEDEDF0);
-const Color kBorder    = Color(0xFFEAEAEA);
-const String kBase     = 'http://127.0.0.1:8000/api';
-
+const Color kBorder = Color(0xFFEAEAEA);
 
 // ── Models ────────────────────────────────────────────────────────────────────
 class OrderItemModel {
@@ -33,12 +32,12 @@ class OrderItemModel {
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> j) => OrderItemModel(
-        id:           j['id'],
-        productName:  j['product_name'] ?? '',
-        productPrice: double.tryParse(j['product_price'].toString()) ?? 0,
-        quantity:     j['quantity'] ?? 1,
-        imageUrl:     j['image_url'],
-      );
+    id: j['id'],
+    productName: j['product_name'] ?? '',
+    productPrice: double.tryParse(j['product_price'].toString()) ?? 0,
+    quantity: j['quantity'] ?? 1,
+    imageUrl: j['image_url'],
+  );
 }
 
 class OrderModel {
@@ -78,50 +77,57 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> j) => OrderModel(
-        id:               j['id'],
-        status:           j['status'] ?? 'placed',
-        paymentMethod:    j['payment_method'] ?? 'cod',
-        totalAmount:      double.tryParse(j['total_amount'].toString()) ?? 0,
-        totalItems:       j['total_items'] ?? 0,
-        firstName:        j['first_name'] ?? '',
-        lastName:         j['last_name'] ?? '',
-        addressLine1:     j['address_line_1'] ?? '',
-        addressLine2:     j['address_line_2'] ?? '',
-        city:             j['city'] ?? '',
-        state:            j['state'] ?? '',
-        postalCode:       j['postal_code'] ?? '',
-        country:          j['country'] ?? '',
-        trackingNumber:   j['tracking_number'] ?? '',
-        currentLocation:  j['current_location'] ?? '',
-        estimatedDelivery: j['estimated_delivery'],
-        createdAt:        j['created_at'] ?? '',
-        items: (j['items'] as List<dynamic>? ?? [])
-            .map((e) => OrderItemModel.fromJson(e))
-            .toList(),
-      );
+    id: j['id'],
+    status: j['status'] ?? 'placed',
+    paymentMethod: j['payment_method'] ?? 'cod',
+    totalAmount: double.tryParse(j['total_amount'].toString()) ?? 0,
+    totalItems: j['total_items'] ?? 0,
+    firstName: j['first_name'] ?? '',
+    lastName: j['last_name'] ?? '',
+    addressLine1: j['address_line_1'] ?? '',
+    addressLine2: j['address_line_2'] ?? '',
+    city: j['city'] ?? '',
+    state: j['state'] ?? '',
+    postalCode: j['postal_code'] ?? '',
+    country: j['country'] ?? '',
+    trackingNumber: j['tracking_number'] ?? '',
+    currentLocation: j['current_location'] ?? '',
+    estimatedDelivery: j['estimated_delivery'],
+    createdAt: j['created_at'] ?? '',
+    items: (j['items'] as List<dynamic>? ?? [])
+        .map((e) => OrderItemModel.fromJson(e))
+        .toList(),
+  );
 
   bool get canCancel => status == 'placed' || status == 'confirmed';
 
-  bool get isPending =>
-      paymentMethod == 'cod' && status == 'placed';
+  bool get isPending => paymentMethod == 'cod' && status == 'placed';
 
-  bool get isApproved =>
-      paymentMethod == 'upi' && status != 'cancelled';
+  bool get isApproved => paymentMethod == 'upi' && status != 'cancelled';
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────
 Future<List<OrderModel>> fetchOrders(int userId) async {
-  final res = await http.get(Uri.parse('$kBase/orders/?user_id=$userId'));
+  final res = await http
+      .get(Uri.parse('${ApiService.baseUrl}/orders/$userId/'))
+      .timeout(const Duration(seconds: 30));
+
   if (res.statusCode == 200) {
-    final List data = jsonDecode(res.body);
+    final decoded = jsonDecode(res.body);
+    if (decoded is! List) {
+      throw Exception('Unexpected orders response');
+    }
+
+    final List data = decoded;
     return data.map((e) => OrderModel.fromJson(e)).toList();
   }
-  throw Exception('Failed');
+
+  throw Exception('Failed to load orders (${res.statusCode})');
 }
 
 Future<bool> cancelOrder(int orderId, int userId) async {
   final res = await http.patch(
-    Uri.parse('$kBase/orders/$orderId/cancel/'),
+    Uri.parse('${ApiService.baseUrl}/orders/$orderId/cancel/'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'user_id': userId}),
   );
@@ -258,19 +264,17 @@ class _OrderPageState extends State<OrderPage>
                         sub: i == 0
                             ? 'Your active orders will appear here'
                             : i == 1
-                                ? 'No cancelled orders'
-                                : 'No delivered orders yet',
+                            ? 'No cancelled orders'
+                            : 'No delivered orders yet',
                       );
                     }
                     return RefreshIndicator(
                       color: kBrandRed,
                       onRefresh: () async => _load(),
                       child: ListView.separated(
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                         itemCount: list.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 14),
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
                         itemBuilder: (_, idx) => _OrderCard(
                           userId: widget.userId,
                           order: list[idx],
@@ -333,58 +337,55 @@ class _OrderCard extends StatelessWidget {
 
   // ── Header
   Widget _header() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: kBrandRed.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.receipt_long_rounded,
-                color: kBrandRed,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order #${order.id}',
-                    style: const TextStyle(
-                      color: kTextDark,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _fmtDate(order.createdAt),
-                    style: const TextStyle(
-                      color: kTextMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _StatusChip(status: order.status),
-          ],
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: kBrandRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.receipt_long_rounded,
+            color: kBrandRed,
+            size: 22,
+          ),
         ),
-      );
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Order #${order.id}',
+                style: const TextStyle(
+                  color: kTextDark,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _fmtDate(order.createdAt),
+                style: const TextStyle(color: kTextMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        _StatusChip(status: order.status),
+      ],
+    ),
+  );
 
   // ── Payment badge
   Widget _paymentBadge() {
     final isCod = order.paymentMethod == 'cod';
     final color = isCod ? const Color(0xFFE9A100) : const Color(0xFF1DB954);
     final label = isCod ? 'Payment Pending' : 'Payment Approved';
-    final icon  = isCod ? Icons.access_time_rounded : Icons.verified_rounded;
-    final sub   = isCod ? 'Cash on Delivery' : 'Paid via UPI';
+    final icon = isCod ? Icons.access_time_rounded : Icons.verified_rounded;
+    final sub = isCod ? 'Cash on Delivery' : 'Paid via UPI';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 14),
@@ -437,8 +438,9 @@ class _OrderCard extends StatelessWidget {
   // ── Delivery address
   Widget _addressRow() {
     final full = '${order.firstName} ${order.lastName}'.trim();
-    final line2 =
-        order.addressLine2.isNotEmpty ? ', ${order.addressLine2}' : '';
+    final line2 = order.addressLine2.isNotEmpty
+        ? ', ${order.addressLine2}'
+        : '';
     final addr =
         '${order.addressLine1}$line2, ${order.city}, ${order.state} - ${order.postalCode}';
     return Padding(
@@ -492,54 +494,50 @@ class _OrderCard extends StatelessWidget {
 
   // ── Footer
   Widget _footer(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Row(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+    child: Row(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${order.totalItems} item${order.totalItems != 1 ? 's' : ''}',
-                  style: const TextStyle(
-                    color: kTextMuted,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '₹${order.totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: kTextDark,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ],
+            Text(
+              '${order.totalItems} item${order.totalItems != 1 ? 's' : ''}',
+              style: const TextStyle(color: kTextMuted, fontSize: 11),
             ),
-            const Spacer(),
-            if (order.status != 'cancelled' &&
-                order.status != 'delivered') ...[
-              _PillBtn(
-                label: 'Track',
-                icon: Icons.local_shipping_outlined,
-                color: const Color(0xFF1565C0),
-                filled: true,
-                onTap: () => _showTracking(context),
+            const SizedBox(height: 2),
+            Text(
+              '₹${order.totalAmount.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: kTextDark,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.3,
               ),
-              const SizedBox(width: 8),
-            ],
-            if (order.canCancel)
-              _PillBtn(
-                label: 'Cancel',
-                icon: Icons.cancel_outlined,
-                color: kBrandRed,
-                filled: false,
-                onTap: () => _confirmCancel(context),
-              ),
+            ),
           ],
         ),
-      );
+        const Spacer(),
+        if (order.status != 'cancelled' && order.status != 'delivered') ...[
+          _PillBtn(
+            label: 'Track',
+            icon: Icons.local_shipping_outlined,
+            color: const Color(0xFF1565C0),
+            filled: true,
+            onTap: () => _showTracking(context),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (order.canCancel)
+          _PillBtn(
+            label: 'Cancel',
+            icon: Icons.cancel_outlined,
+            color: kBrandRed,
+            filled: false,
+            onTap: () => _confirmCancel(context),
+          ),
+      ],
+    ),
+  );
 
   void _showTracking(BuildContext context) {
     showModalBottomSheet(
@@ -555,9 +553,7 @@ class _OrderCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: kCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -593,10 +589,7 @@ class _OrderCard extends StatelessWidget {
             onPressed: () => Navigator.pop(context, false),
             child: const Text(
               'No',
-              style: TextStyle(
-                color: kTextMuted,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: kTextMuted, fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
@@ -604,8 +597,7 @@ class _OrderCard extends StatelessWidget {
               backgroundColor: kBrandRed,
               foregroundColor: Colors.white,
               elevation: 0,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -625,9 +617,7 @@ class _OrderCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success
-                ? 'Order #${order.id} cancelled'
-                : 'Could not cancel order',
+            success ? 'Order #${order.id} cancelled' : 'Could not cancel order',
           ),
           backgroundColor: success ? kBrandRed : Colors.grey,
           behavior: SnackBarBehavior.floating,
@@ -644,8 +634,18 @@ class _OrderCard extends StatelessWidget {
     try {
       final dt = DateTime.parse(iso).toLocal();
       const m = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${dt.day} ${m[dt.month - 1]} ${dt.year}  •  '
           '${dt.hour.toString().padLeft(2, '0')}:'
@@ -706,7 +706,9 @@ class _ItemRow extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: kSurface,
                         borderRadius: BorderRadius.circular(5),
@@ -723,10 +725,7 @@ class _ItemRow extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       '₹${item.productPrice.toStringAsFixed(0)} each',
-                      style: const TextStyle(
-                        color: kTextMuted,
-                        fontSize: 11,
-                      ),
+                      style: const TextStyle(color: kTextMuted, fontSize: 11),
                     ),
                   ],
                 ),
@@ -748,15 +747,15 @@ class _ItemRow extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: 56,
-        height: 56,
-        color: kSurface,
-        child: const Icon(
-          Icons.image_not_supported_outlined,
-          color: kTextMuted,
-          size: 22,
-        ),
-      );
+    width: 56,
+    height: 56,
+    color: kSurface,
+    child: const Icon(
+      Icons.image_not_supported_outlined,
+      color: kTextMuted,
+      size: 22,
+    ),
+  );
 }
 
 // ── Status Chip ───────────────────────────────────────────────────────────────
@@ -767,13 +766,13 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      'placed'           => (const Color(0xFF1565C0), 'Placed'),
-      'confirmed'        => (const Color(0xFF6A1B9A), 'Confirmed'),
-      'shipped'          => (const Color(0xFFF57C00), 'Shipped'),
+      'placed' => (const Color(0xFF1565C0), 'Placed'),
+      'confirmed' => (const Color(0xFF6A1B9A), 'Confirmed'),
+      'shipped' => (const Color(0xFFF57C00), 'Shipped'),
       'out_for_delivery' => (const Color(0xFF00838F), 'On the way'),
-      'delivered'        => (const Color(0xFF1DB954), 'Delivered'),
-      'cancelled'        => (kBrandRed,               'Cancelled'),
-      _                  => (kTextMuted,              status),
+      'delivered' => (const Color(0xFF1DB954), 'Delivered'),
+      'cancelled' => (kBrandRed, 'Cancelled'),
+      _ => (kTextMuted, status),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -787,10 +786,7 @@ class _StatusChip extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
@@ -825,40 +821,39 @@ class _PillBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: filled ? color.withOpacity(0.1) : Colors.transparent,
-              border: Border.all(
-                color: filled ? Colors.transparent : color.withOpacity(0.5),
-                width: 1.2,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: color, size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: filled ? color.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(
+            color: filled ? Colors.transparent : color.withOpacity(0.5),
+            width: 1.2,
           ),
+          borderRadius: BorderRadius.circular(10),
         ),
-      );
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 14),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 // ── Tracking Bottom Sheet ─────────────────────────────────────────────────────
@@ -867,11 +862,11 @@ class _TrackingSheet extends StatelessWidget {
   const _TrackingSheet({required this.order});
 
   static const _steps = [
-    ('placed',           'Order Placed',      Icons.receipt_outlined),
-    ('confirmed',        'Order Confirmed',   Icons.thumb_up_outlined),
-    ('shipped',          'Shipped',           Icons.local_shipping_outlined),
-    ('out_for_delivery', 'Out for Delivery',  Icons.delivery_dining),
-    ('delivered',        'Delivered',         Icons.check_circle_outline),
+    ('placed', 'Order Placed', Icons.receipt_outlined),
+    ('confirmed', 'Order Confirmed', Icons.thumb_up_outlined),
+    ('shipped', 'Shipped', Icons.local_shipping_outlined),
+    ('out_for_delivery', 'Out for Delivery', Icons.delivery_dining),
+    ('delivered', 'Delivered', Icons.check_circle_outline),
   ];
 
   int get _currentStep {
@@ -935,7 +930,9 @@ class _TrackingSheet extends StatelessWidget {
               if (order.trackingNumber.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: kSurface,
                     borderRadius: BorderRadius.circular(8),
@@ -1020,8 +1017,7 @@ class _TrackingSheet extends StatelessWidget {
           if (order.estimatedDelivery != null) ...[
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: kSurface,
                 borderRadius: BorderRadius.circular(10),
@@ -1050,9 +1046,9 @@ class _TrackingSheet extends StatelessWidget {
           const SizedBox(height: 24),
 
           ...List.generate(_steps.length, (i) {
-            final done    = i <= cur;
+            final done = i <= cur;
             final current = i == cur;
-            final isLast  = i == _steps.length - 1;
+            final isLast = i == _steps.length - 1;
 
             return IntrinsicHeight(
               child: Row(
@@ -1099,10 +1095,7 @@ class _TrackingSheet extends StatelessWidget {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(
-                        top: 9,
-                        bottom: isLast ? 0 : 24,
-                      ),
+                      padding: EdgeInsets.only(top: 9, bottom: isLast ? 0 : 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1116,8 +1109,7 @@ class _TrackingSheet extends StatelessWidget {
                               fontSize: 14,
                             ),
                           ),
-                          if (current &&
-                              order.currentLocation.isNotEmpty)
+                          if (current && order.currentLocation.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 3),
                               child: Text(
@@ -1138,7 +1130,9 @@ class _TrackingSheet extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 14),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: kBrandRed,
                           borderRadius: BorderRadius.circular(6),
@@ -1177,36 +1171,30 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: kBrandRed.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 44, color: kBrandRed),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              label,
-              style: const TextStyle(
-                color: kTextDark,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              sub,
-              style: const TextStyle(
-                color: kTextMuted,
-                fontSize: 13.5,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 96,
+          height: 96,
+          decoration: BoxDecoration(
+            color: kBrandRed.withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 44, color: kBrandRed),
         ),
-      );
+        const SizedBox(height: 20),
+        Text(
+          label,
+          style: const TextStyle(
+            color: kTextDark,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(sub, style: const TextStyle(color: kTextMuted, fontSize: 13.5)),
+      ],
+    ),
+  );
 }
