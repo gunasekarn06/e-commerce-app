@@ -1,785 +1,3 @@
-// import 'package:flutter/material.dart';
-// import '../models/product_model.dart';
-// import '../services/api_service.dart';
-// import '../services/wishlist_service.dart';
-// import '../services/cart_service.dart';
-// import 'product_detail_page.dart';
-// import 'cart_page.dart';
-// import 'dart:async';
-
-// const Color kBrandRed = Color(0xFFE4252A);
-// const Color kBrandRedSoft = Color(0xFFFFE5E6);
-// const Color kBgLight = Color(0xFFFDF7F7);
-// const Color kTextDark = Color(0xFF1A1A1A);
-// const Color kTextMuted = Color(0xFF6B6B6B);
-
-// class HomePage extends StatefulWidget {
-//   final Map<String, dynamic> userData;
-//   const HomePage({super.key, required this.userData});
-
-//   @override
-//   State<HomePage> createState() => _HomePageState();
-// }
-
-// class _HomePageState extends State<HomePage> {
-//   List<Product> products = [];
-//   List<Product> filteredProducts = [];
-//   bool isLoading = true;
-//   String selectedCategory = 'all';
-//   final TextEditingController _searchController = TextEditingController();
-//   String _searchQuery = '';
-//   int cartCount = 0;
-
-//   final PageController _carouselController = PageController();
-//   int _currentCarouselIndex = 0;
-//   Timer? _carouselTimer;
-
-//   late StreamSubscription<CartChangeEvent> _cartSubscription;
-
-//   List<Map<String, dynamic>> categories = [];
-
-//   String _categoryQueryValue(Map<String, dynamic> category) {
-//     if ((category['name']?.toString() ?? '').toLowerCase() == 'all') {
-//       return 'all';
-//     }
-
-//     final categoryId = category['id'];
-//     if (categoryId != null) {
-//       return categoryId.toString();
-//     }
-
-//     final displayName = category['display_name']?.toString().trim() ?? '';
-//     if (displayName.isNotEmpty) {
-//       return displayName;
-//     }
-
-//     return category['name']?.toString().trim() ?? '';
-//   }
-
-//   String _categoryLabel(Map<String, dynamic> category) {
-//     final displayName = category['display_name']?.toString().trim() ?? '';
-//     if (displayName.isNotEmpty) {
-//       return displayName;
-//     }
-
-//     return category['name']?.toString().trim() ?? '';
-//   }
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     fetchProducts();
-//     fetchCartCount();
-//     _fetchCategories();
-//     _searchController.addListener(_onSearchChanged);
-//     _startCarouselTimer();
-//     _cartSubscription = CartService().cartChangeStream.listen((event) {
-//       fetchCartCount();
-//     });
-//   }
-
-//   Future<void> _fetchCategories() async {
-//     try {
-//       final result = await ApiService.getCategories();
-//       if (result['success']) {
-//         setState(() {
-//           categories = [
-//             {'name': 'all', 'display_name': 'All'},
-//             ...List<Map<String, dynamic>>.from(result['data'])
-//           ];
-//         });
-//       } else {
-//         // Keep only the default All category when categories fail to load
-//         setState(() {
-//           categories = [
-//             {'name': 'all', 'display_name': 'All'},
-//           ];
-//         });
-//       }
-//     } catch (e) {
-//       // Keep only the default All category when categories fail to load
-//       setState(() {
-//         categories = [
-//           {'name': 'all', 'display_name': 'All'},
-//         ];
-//       });
-//     }
-//   }
-
-//   void _startCarouselTimer() {
-//     _carouselTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-//       if (!_carouselController.hasClients) return;
-//       final nextPage = (_currentCarouselIndex + 1) % 4;
-//       _carouselController.animateToPage(
-//         nextPage,
-//         duration: const Duration(milliseconds: 500),
-//         curve: Curves.easeInOut,
-//       );
-//     });
-//   }
-
-//   @override
-//   void dispose() {
-//     _searchController.removeListener(_onSearchChanged);
-//     _searchController.dispose();
-//     _carouselTimer?.cancel();
-//     _carouselController.dispose();
-//     _cartSubscription.cancel();
-//     super.dispose();
-//   }
-
-//   void _onSearchChanged() {
-//     setState(() {
-//       _searchQuery = _searchController.text.toLowerCase();
-//       _applyFilters();
-//     });
-//   }
-
-//   void _applyFilters() {
-//     filteredProducts = products.where((product) {
-//       final matchesSearch = _searchQuery.isEmpty ||
-//           product.name.toLowerCase().contains(_searchQuery) ||
-//           product.description.toLowerCase().contains(_searchQuery);
-//       return matchesSearch;
-//     }).toList();
-//   }
-
-//   Future<void> fetchProducts() async {
-//     setState(() => isLoading = true);
-//     final categoryFilter = selectedCategory.trim();
-//     final fetchedProducts = categoryFilter == 'all' || categoryFilter.isEmpty
-//         ? await ApiService.getProducts()
-//         : await ApiService.getProducts(category: categoryFilter);
-
-//     setState(() {
-//       products = fetchedProducts;
-//       _applyFilters();
-//       isLoading = false;
-//     });
-//   }
-
-//   Future<void> fetchCartCount() async {
-//     final count = await ApiService.getCartCount(widget.userData['id']);
-//     setState(() => cartCount = count);
-//   }
-
-//   Widget _buildHomePage() {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         // Header
-//         Padding(
-//           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-//           child: Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   const Text(
-//                     'Discover',
-//                     style: TextStyle(
-//                       color: kBrandRed,
-//                       fontSize: 28,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   Text(
-//                     'Welcome, ${widget.userData['full_name']}',
-//                     style: const TextStyle(fontSize: 13, color: kTextMuted),
-//                   ),
-//                 ],
-//               ),
-//               Stack(
-//                 children: [
-//                   Container(
-//                     decoration: BoxDecoration(
-//                       color: Colors.grey[100],
-//                       shape: BoxShape.circle,
-//                     ),
-//                     child: IconButton(
-//                       icon: const Icon(
-//                         Icons.shopping_cart_outlined,
-//                         color: kBrandRed,
-//                         size: 24,
-//                       ),
-//                       onPressed: () {
-//                         Navigator.push(
-//                           context,
-//                           MaterialPageRoute(
-//                             builder: (context) =>
-//                                 CartPage(userId: widget.userData['id']),
-//                           ),
-//                         );
-//                       },
-//                     ),
-//                   ),
-//                   Positioned(
-//                     right: 2,
-//                     top: 2,
-//                     child: Container(
-//                       padding: const EdgeInsets.all(4),
-//                       decoration: BoxDecoration(
-//                         color: kBrandRed,
-//                         shape: BoxShape.circle,
-//                         border: Border.all(color: Colors.white, width: 1.5),
-//                       ),
-//                       child: Text(
-//                         cartCount.toString(),
-//                         style: const TextStyle(
-//                           color: Colors.white,
-//                           fontSize: 9,
-//                           fontWeight: FontWeight.bold,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ],
-//           ),
-//         ),
-//         const SizedBox(height: 20),
-
-//         // Carousel
-//         SizedBox(
-//           height: 160,
-//           child: PageView(
-//             controller: _carouselController,
-//             onPageChanged: (index) =>
-//                 setState(() => _currentCarouselIndex = index),
-//             children: [
-//               _buildCarouselItem('assets/images/mardani_khel.jpg',
-//                   'Mardani Khel', 'Maharashtra Weapon Art'),
-//               _buildCarouselItem('assets/images/gatka.jpg', 'Gatka',
-//                   'Traditional Sikh Martial Art'),
-//               _buildCarouselItem('assets/images/thang_ta.jpg', 'Thang-Ta',
-//                   'Manipuri Sword & Spear Art'),
-//               _buildCarouselItem('assets/images/kalaripayattu.jpg',
-//                   'Kalaripayattu', 'Ancient Kerala Martial Art'),
-//             ],
-//           ),
-//         ),
-//         const SizedBox(height: 10),
-//         Row(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: List.generate(4, (index) {
-//             final isActive = _currentCarouselIndex == index;
-//             return AnimatedContainer(
-//               duration: const Duration(milliseconds: 200),
-//               margin: const EdgeInsets.symmetric(horizontal: 6),
-//               width: isActive ? 24 : 8,
-//               height: 8,
-//               decoration: BoxDecoration(
-//                 color: isActive ? kBrandRed : kBrandRed.withOpacity(0.2),
-//                 borderRadius: BorderRadius.circular(4),
-//               ),
-//             );
-//           }),
-//         ),
-//         const SizedBox(height: 16),
-
-//         // Search Bar
-//         Padding(
-//           padding: const EdgeInsets.symmetric(horizontal: 20),
-//           child: Container(
-//             decoration: BoxDecoration(
-//               color: Colors.white,
-//               borderRadius: BorderRadius.circular(16),
-//               border: Border.all(color: Colors.black.withOpacity(0.02)),
-//               boxShadow: [
-//                 BoxShadow(
-//                   color: kBrandRed.withOpacity(0.05),
-//                   blurRadius: 10,
-//                   offset: const Offset(0, 4),
-//                 ),
-//               ],
-//             ),
-//             child: TextField(
-//               controller: _searchController,
-//               style: const TextStyle(color: kTextDark),
-//               decoration: InputDecoration(
-//                 hintText: 'Search products...',
-//                 hintStyle: const TextStyle(color: kTextMuted),
-//                 prefixIcon: const Icon(Icons.search, color: kBrandRed),
-//                 suffixIcon: _searchQuery.isNotEmpty
-//                     ? IconButton(
-//                         icon: const Icon(Icons.close, color: kTextMuted),
-//                         onPressed: () => _searchController.clear(),
-//                       )
-//                     : null,
-//                 border: InputBorder.none,
-//                 contentPadding: const EdgeInsets.symmetric(
-//                     horizontal: 16, vertical: 14),
-//               ),
-//             ),
-//           ),
-//         ),
-//         const SizedBox(height: 20),
-
-//         // Categories
-//         Padding(
-//           padding: const EdgeInsets.symmetric(horizontal: 20),
-//           child: Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               const Text(
-//                 'Categories',
-//                 style: TextStyle(
-//                   color: kTextDark,
-//                   fontSize: 18,
-//                   fontWeight: FontWeight.bold,
-//                 ),
-//               ),
-//               Text(
-//                 'See all',
-//                 style: TextStyle(
-//                   color: kBrandRed.withOpacity(0.9),
-//                   fontSize: 14,
-//                   fontWeight: FontWeight.w600,
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//         const SizedBox(height: 10),
-//         SizedBox(
-//           height: 40,
-//           child: ListView.builder(
-//             scrollDirection: Axis.horizontal,
-//             padding: const EdgeInsets.symmetric(horizontal: 16),
-//             itemCount: categories.length,
-//             itemBuilder: (context, index) {
-//               final category = categories[index];
-//               final categoryQueryValue = _categoryQueryValue(category);
-//               final isSelected = selectedCategory == categoryQueryValue;
-//               return Padding(
-//                 padding: const EdgeInsets.only(right: 8),
-//                 child: Material(
-//                   color: Colors.transparent,
-//                   borderRadius: BorderRadius.circular(20),
-//                   child: InkWell(
-//                     onTap: () {
-//                       setState(() => selectedCategory = categoryQueryValue);
-//                       fetchProducts();
-//                     },
-//                     splashColor: kBrandRed.withOpacity(0.18),
-//                     highlightColor: kBrandRed.withOpacity(0.10),
-//                     borderRadius: BorderRadius.circular(20),
-//                     child: Ink(
-//                       decoration: BoxDecoration(
-//                         color: isSelected ? kBrandRed : Colors.white,
-//                         borderRadius: BorderRadius.circular(20),
-//                         border: Border.all(
-//                           color: isSelected
-//                               ? kBrandRed
-//                               : Colors.black.withOpacity(0.08),
-//                         ),
-//                         boxShadow: isSelected
-//                             ? [
-//                                 BoxShadow(
-//                                   color: kBrandRed.withOpacity(0.3),
-//                                   blurRadius: 8,
-//                                   offset: const Offset(0, 3),
-//                                 )
-//                               ]
-//                             : [],
-//                       ),
-//                       child: AnimatedContainer(
-//                         duration: const Duration(milliseconds: 200),
-//                         padding: const EdgeInsets.symmetric(
-//                             horizontal: 18, vertical: 8),
-//                         decoration: const BoxDecoration(
-//                           color: Colors.transparent,
-//                           borderRadius: BorderRadius.all(Radius.circular(20)),
-//                         ),
-//                         child: Center(
-//                           child: Text(
-//                             _categoryLabel(category),
-//                             style: TextStyle(
-//                               color: isSelected ? Colors.white : kTextDark,
-//                               fontWeight: FontWeight.w600,
-//                               fontSize: 13,
-//                             ),
-//                           ),
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               );
-//             },
-//           ),
-//         ),
-//         const SizedBox(height: 16),
-
-//         // Products Grid
-//         Expanded(
-//           child: isLoading
-//               ? const Center(
-//                   child: CircularProgressIndicator(color: kBrandRed),
-//                 )
-//               : filteredProducts.isEmpty
-//                   ? Center(
-//                       child: Column(
-//                         mainAxisAlignment: MainAxisAlignment.center,
-//                         children: [
-//                           Icon(Icons.search_off,
-//                               size: 64, color: kBrandRed.withOpacity(0.4)),
-//                           const SizedBox(height: 12),
-//                           Text(
-//                             _searchQuery.isNotEmpty
-//                                 ? 'No results for "$_searchQuery"'
-//                                 : 'No products found',
-//                             style: const TextStyle(
-//                               color: kTextMuted,
-//                               fontSize: 16,
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     )
-//                   : RefreshIndicator(
-//                       color: kBrandRed,
-//                       onRefresh: fetchProducts,
-//                       child: GridView.builder(
-//                         padding: const EdgeInsets.symmetric(horizontal: 20),
-//                         gridDelegate:
-//                             const SliverGridDelegateWithFixedCrossAxisCount(
-//                           crossAxisCount: 2,
-//                           childAspectRatio: 0.72,
-//                           crossAxisSpacing: 14,
-//                           mainAxisSpacing: 14,
-//                         ),
-//                         itemCount: filteredProducts.length,
-//                         itemBuilder: (context, index) {
-//                           return ProductCard(
-//                             product: filteredProducts[index],
-//                             userData: widget.userData,
-//                           );
-//                         },
-//                       ),
-//                     ),
-//         ),
-//       ],
-//     );
-//   }
-
-//   Widget _buildCarouselItem(String imagePath, String title, String subtitle) {
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(horizontal: 20),
-//       child: ClipRRect(
-//         borderRadius: BorderRadius.circular(20),
-//         child: Stack(
-//           fit: StackFit.expand,
-//           children: [
-//             Image.asset(
-//               imagePath,
-//               fit: BoxFit.cover,
-//               errorBuilder: (_, _, _) => Container(color: kBrandRedSoft),
-//             ),
-//             Container(
-//               decoration: BoxDecoration(
-//                 gradient: LinearGradient(
-//                   begin: Alignment.topCenter,
-//                   end: Alignment.bottomCenter,
-//                   colors: [
-//                     const Color.fromARGB(0, 0, 0, 0),
-//                     const Color.fromARGB(255, 0, 0, 0).withOpacity(0.10),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//             Positioned(
-//               bottom: 18,
-//               left: 18,
-//               right: 18,
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     title,
-//                     style: const TextStyle(
-//                       color: kBrandRed,
-//                       fontSize: 20,
-//                       fontWeight: FontWeight.bold,
-//                     ),
-//                   ),
-//                   Text(
-//                     subtitle,
-//                     style: TextStyle(
-//                       color: Colors.white.withOpacity(0.95),
-//                       fontSize: 12,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: kBgLight,
-//       body: SafeArea(child: _buildHomePage()),
-//     );
-//   }
-// }
-
-// class ProductCard extends StatefulWidget {
-//   final Product product;
-//   final Map<String, dynamic> userData;
-
-//   const ProductCard({super.key, required this.product, required this.userData});
-
-//   @override
-//   State<ProductCard> createState() => _ProductCardState();
-// }
-
-// class _ProductCardState extends State<ProductCard> {
-//   bool _isInWishlist = false;
-//   late StreamSubscription<WishlistChangeEvent> _wishlistSubscription;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _checkWishlistStatus();
-//     _wishlistSubscription = WishlistService().wishlistChangeStream.listen((event) {
-//       if (event.productId == widget.product.id) {
-//         setState(() {
-//           _isInWishlist = event.isAdded;
-//         });
-//       }
-//     });
-//   }
-
-//   Future<void> _checkWishlistStatus() async {
-//     final status = await ApiService.isProductInWishlist(
-//       userId: widget.userData['id'],
-//       productId: widget.product.id,
-//     );
-//     setState(() {
-//       _isInWishlist = status;
-//     });
-//   }
-
-//   Future<void> _toggleWishlist() async {
-//     try {
-//       if (_isInWishlist) {
-//         final success = await ApiService.removeFromWishlist(
-//           userId: widget.userData['id'],
-//           productId: widget.product.id,
-//         );
-//         if (success) {
-//           setState(() {
-//             _isInWishlist = false;
-//           });
-//           // Notify wishlist page of the change
-//           WishlistService().notifyWishlistChange(
-//             WishlistChangeEvent(
-//               productId: widget.product.id,
-//               isAdded: false,
-//             ),
-//           );
-//           if (mounted) {
-//             ScaffoldMessenger.of(context).showSnackBar(
-//               const SnackBar(
-//                 content: Text('Removed from wishlist'),
-//                 duration: Duration(seconds: 1),
-//               ),
-//             );
-//           }
-//         }
-//       } else {
-//         final success = await ApiService.addToWishlist(
-//           userId: widget.userData['id'],
-//           productId: widget.product.id,
-//         );
-//         if (success) {
-//           setState(() {
-//             _isInWishlist = true;
-//           });
-//           // Notify wishlist page of the change
-//           WishlistService().notifyWishlistChange(
-//             WishlistChangeEvent(
-//               productId: widget.product.id,
-//               isAdded: true,
-//             ),
-//           );
-//           if (mounted) {
-//             ScaffoldMessenger.of(context).showSnackBar(
-//               const SnackBar(
-//                 content: Text('Added to wishlist'),
-//                 duration: Duration(seconds: 1),
-//               ),
-//             );
-//           }
-//         }
-//       }
-//     } catch (e) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(
-//             content: Text('Error: ${e.toString()}'),
-//             duration: const Duration(seconds: 2),
-//           ),
-//         );
-//       }
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _wishlistSubscription.cancel();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       onTap: () {
-//         Navigator.push(
-//           context,
-//           MaterialPageRoute(
-//             builder: (context) =>
-//                 ProductDetailPage(productId: widget.product.id, userData: widget.userData),
-//           ),
-//         );
-//       },
-//       child: Container(
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(18),
-//           border: Border.all(color: Colors.black.withOpacity(0.05)),
-//           boxShadow: [
-//             BoxShadow(
-//               color: kBrandRed.withOpacity(0.06),
-//               blurRadius: 12,
-//               offset: const Offset(0, 4),
-//             ),
-//           ],
-//         ),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             // Image Container with Heart Button
-//             Stack(
-//               children: [
-//                 ClipRRect(
-//                   borderRadius:
-//                       const BorderRadius.vertical(top: Radius.circular(18)),
-//                   child: widget.product.imageUrl != null
-//                       ? Image.network(
-//                           widget.product.imageUrl!,
-//                           height: 160,
-//                           width: double.infinity,
-//                           fit: BoxFit.cover,
-//                           errorBuilder: (_, _, _) => Container(
-//                             height: 160,
-//                             width: double.infinity,
-//                             color: kBrandRedSoft,
-//                             child: const Icon(Icons.image_not_supported,
-//                                 color: kBrandRed, size: 36),
-//                           ),
-//                         )
-//                       : Container(
-//                           height: 160,
-//                           width: double.infinity,
-//                           color: kBrandRedSoft,
-//                           child: const Icon(Icons.shopping_bag,
-//                               color: kBrandRed, size: 36),
-//                         ),
-//                 ),
-//                 // Heart Button
-//                 Positioned(
-//                   top: 8,
-//                   right: 8,
-//                   child: GestureDetector(
-//                     onTap: _toggleWishlist,
-//                     child: Container(
-//                       decoration: BoxDecoration(
-//                         color: Colors.white.withOpacity(0.9),
-//                         shape: BoxShape.circle,
-//                         boxShadow: [
-//                           BoxShadow(
-//                             color: Colors.black.withOpacity(0.1),
-//                             blurRadius: 8,
-//                             offset: const Offset(0, 2),
-//                           ),
-//                         ],
-//                       ),
-//                       padding: const EdgeInsets.all(8),
-//                       child: Icon(
-//                         _isInWishlist ? Icons.favorite : Icons.favorite_border,
-//                         color: kBrandRed,
-//                         size: 20,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             Expanded(
-//               child: Padding(
-//                 padding: const EdgeInsets.all(10),
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                   children: [
-//                     Text(
-//                       widget.product.name,
-//                       style: const TextStyle(
-//                         color: kTextDark,
-//                         fontWeight: FontWeight.w600,
-//                         fontSize: 13,
-//                       ),
-//                       maxLines: 2,
-//                       overflow: TextOverflow.ellipsis,
-//                     ),
-//                     Row(
-//                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                       children: [
-//                         Text(
-//                           '₹${widget.product.price.toStringAsFixed(2)}',
-//                           style: const TextStyle(
-//                             color: kBrandRed,
-//                             fontWeight: FontWeight.bold,
-//                             fontSize: 15,
-//                           ),
-//                         ),
-//                         Row(
-//                           children: [
-//                             const Icon(Icons.star,
-//                                 color: Colors.amber, size: 14),
-//                             const SizedBox(width: 2),
-//                             Text(
-//                               widget.product.rating.toString(),
-//                               style: const TextStyle(
-//                                 color: kTextMuted,
-//                                 fontSize: 12,
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/api_service.dart';
@@ -864,7 +82,7 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           categories = [
             {'name': 'all', 'display_name': 'All'},
-            ...List<Map<String, dynamic>>.from(result['data'])
+            ...List<Map<String, dynamic>>.from(result['data']),
           ];
         });
       } else {
@@ -914,7 +132,8 @@ class _HomePageState extends State<HomePage> {
 
   void _applyFilters() {
     filteredProducts = products.where((product) {
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           product.name.toLowerCase().contains(_searchQuery) ||
           product.description.toLowerCase().contains(_searchQuery);
       return matchesSearch;
@@ -938,6 +157,19 @@ class _HomePageState extends State<HomePage> {
   Future<void> fetchCartCount() async {
     final count = await ApiService.getCartCount(widget.userData['id']);
     setState(() => cartCount = count);
+  }
+
+  Future<void> _showAllProducts() async {
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
+
+    setState(() {
+      selectedCategory = 'all';
+      _searchQuery = '';
+    });
+
+    await fetchProducts();
   }
 
   Widget _buildHomePage() {
@@ -1035,14 +267,26 @@ class _HomePageState extends State<HomePage> {
                           onPageChanged: (index) =>
                               setState(() => _currentCarouselIndex = index),
                           children: [
-                            _buildCarouselItem('assets/images/mardani_khel.jpg',
-                                'Mardani Khel', 'Maharashtra Weapon Art'),
-                            _buildCarouselItem('assets/images/gatka.jpg', 'Gatka',
-                                'Traditional Sikh Martial Art'),
-                            _buildCarouselItem('assets/images/thang_ta.jpg', 'Thang-Ta',
-                                'Manipuri Sword & Spear Art'),
-                            _buildCarouselItem('assets/images/kalaripayattu.jpg',
-                                'Kalaripayattu', 'Ancient Kerala Martial Art'),
+                            _buildCarouselItem(
+                              'assets/images/mardani_khel.jpg',
+                              'Mardani Khel',
+                              'Maharashtra Weapon Art',
+                            ),
+                            _buildCarouselItem(
+                              'assets/images/gatka.jpg',
+                              'Gatka',
+                              'Traditional Sikh Martial Art',
+                            ),
+                            _buildCarouselItem(
+                              'assets/images/thang_ta.jpg',
+                              'Thang-Ta',
+                              'Manipuri Sword & Spear Art',
+                            ),
+                            _buildCarouselItem(
+                              'assets/images/kalaripayattu.jpg',
+                              'Kalaripayattu',
+                              'Ancient Kerala Martial Art',
+                            ),
                           ],
                         ),
                       ),
@@ -1057,7 +301,9 @@ class _HomePageState extends State<HomePage> {
                             width: isActive ? 24 : 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: isActive ? kBrandRed : kBrandRed.withOpacity(0.2),
+                              color: isActive
+                                  ? kBrandRed
+                                  : kBrandRed.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           );
@@ -1072,7 +318,9 @@ class _HomePageState extends State<HomePage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.black.withOpacity(0.02)),
+                            border: Border.all(
+                              color: Colors.black.withOpacity(0.02),
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: kBrandRed.withOpacity(0.05),
@@ -1087,16 +335,25 @@ class _HomePageState extends State<HomePage> {
                             decoration: InputDecoration(
                               hintText: 'Search products...',
                               hintStyle: const TextStyle(color: kTextMuted),
-                              prefixIcon: const Icon(Icons.search, color: kBrandRed),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: kBrandRed,
+                              ),
                               suffixIcon: _searchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.close, color: kTextMuted),
-                                      onPressed: () => _searchController.clear(),
+                                      icon: const Icon(
+                                        Icons.close,
+                                        color: kTextMuted,
+                                      ),
+                                      onPressed: () =>
+                                          _searchController.clear(),
                                     )
                                   : null,
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
                             ),
                           ),
                         ),
@@ -1117,12 +374,25 @@ class _HomePageState extends State<HomePage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              'See all',
-                              style: TextStyle(
-                                color: kBrandRed.withOpacity(0.9),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _showAllProducts,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  child: Text(
+                                    'See all',
+                                    style: TextStyle(
+                                      color: kBrandRed.withOpacity(0.9),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -1137,8 +407,11 @@ class _HomePageState extends State<HomePage> {
                           itemCount: categories.length,
                           itemBuilder: (context, index) {
                             final category = categories[index];
-                            final categoryQueryValue = _categoryQueryValue(category);
-                            final isSelected = selectedCategory == categoryQueryValue;
+                            final categoryQueryValue = _categoryQueryValue(
+                              category,
+                            );
+                            final isSelected =
+                                selectedCategory == categoryQueryValue;
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: Material(
@@ -1146,7 +419,10 @@ class _HomePageState extends State<HomePage> {
                                 borderRadius: BorderRadius.circular(20),
                                 child: InkWell(
                                   onTap: () {
-                                    setState(() => selectedCategory = categoryQueryValue);
+                                    setState(
+                                      () =>
+                                          selectedCategory = categoryQueryValue,
+                                    );
                                     fetchProducts();
                                   },
                                   splashColor: kBrandRed.withOpacity(0.3),
@@ -1154,7 +430,9 @@ class _HomePageState extends State<HomePage> {
                                   borderRadius: BorderRadius.circular(20),
                                   child: Ink(
                                     decoration: BoxDecoration(
-                                      color: isSelected ? kBrandRed : Colors.white,
+                                      color: isSelected
+                                          ? kBrandRed
+                                          : Colors.white,
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: isSelected
@@ -1164,22 +442,30 @@ class _HomePageState extends State<HomePage> {
                                       boxShadow: isSelected
                                           ? [
                                               BoxShadow(
-                                                color: kBrandRed.withOpacity(0.3),
+                                                color: kBrandRed.withOpacity(
+                                                  0.3,
+                                                ),
                                                 blurRadius: 8,
                                                 offset: const Offset(0, 3),
-                                              )
+                                              ),
                                             ]
                                           : [],
                                     ),
                                     child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 18, vertical: 8),
+                                        horizontal: 18,
+                                        vertical: 8,
+                                      ),
                                       child: Center(
                                         child: Text(
                                           _categoryLabel(category),
                                           style: TextStyle(
-                                            color: isSelected ? Colors.white : kTextDark,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : kTextDark,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 13,
                                           ),
@@ -1206,48 +492,51 @@ class _HomePageState extends State<HomePage> {
                         ),
                       )
                     : filteredProducts.isEmpty
-                        ? SliverFillRemaining(
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.search_off,
-                                      size: 64, color: kBrandRed.withOpacity(0.4)),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    _searchQuery.isNotEmpty
-                                        ? 'No results for "$_searchQuery"'
-                                        : 'No products found',
-                                    style: const TextStyle(
-                                      color: kTextMuted,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
+                    ? SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: kBrandRed.withOpacity(0.4),
                               ),
-                            ),
-                          )
-                        : SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                            sliver: SliverGrid(
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                              const SizedBox(height: 12),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'No results for "$_searchQuery"'
+                                    : 'No products found',
+                                style: const TextStyle(
+                                  color: kTextMuted,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
                                 childAspectRatio: 0.72,
                                 crossAxisSpacing: 14,
                                 mainAxisSpacing: 14,
                               ),
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  return ProductCard(
-                                    product: filteredProducts[index],
-                                    userData: widget.userData,
-                                  );
-                                },
-                                childCount: filteredProducts.length,
-                              ),
-                            ),
-                          ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            return ProductCard(
+                              product: filteredProducts[index],
+                              userData: widget.userData,
+                            );
+                          }, childCount: filteredProducts.length),
+                        ),
+                      ),
               ],
             ),
           ),
@@ -1312,7 +601,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1340,7 +628,9 @@ class _ProductCardState extends State<ProductCard> {
   void initState() {
     super.initState();
     _checkWishlistStatus();
-    _wishlistSubscription = WishlistService().wishlistChangeStream.listen((event) {
+    _wishlistSubscription = WishlistService().wishlistChangeStream.listen((
+      event,
+    ) {
       if (event.productId == widget.product.id) {
         setState(() {
           _isInWishlist = event.isAdded;
@@ -1371,10 +661,7 @@ class _ProductCardState extends State<ProductCard> {
             _isInWishlist = false;
           });
           WishlistService().notifyWishlistChange(
-            WishlistChangeEvent(
-              productId: widget.product.id,
-              isAdded: false,
-            ),
+            WishlistChangeEvent(productId: widget.product.id, isAdded: false),
           );
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1395,10 +682,7 @@ class _ProductCardState extends State<ProductCard> {
             _isInWishlist = true;
           });
           WishlistService().notifyWishlistChange(
-            WishlistChangeEvent(
-              productId: widget.product.id,
-              isAdded: true,
-            ),
+            WishlistChangeEvent(productId: widget.product.id, isAdded: true),
           );
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1435,8 +719,10 @@ class _ProductCardState extends State<ProductCard> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ProductDetailPage(productId: widget.product.id, userData: widget.userData),
+            builder: (context) => ProductDetailPage(
+              productId: widget.product.id,
+              userData: widget.userData,
+            ),
           ),
         );
       },
@@ -1459,8 +745,9 @@ class _ProductCardState extends State<ProductCard> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(18)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(18),
+                  ),
                   child: widget.product.imageUrl != null
                       ? Image.network(
                           widget.product.imageUrl!,
@@ -1471,16 +758,22 @@ class _ProductCardState extends State<ProductCard> {
                             height: 160,
                             width: double.infinity,
                             color: kBrandRedSoft,
-                            child: const Icon(Icons.image_not_supported,
-                                color: kBrandRed, size: 36),
+                            child: const Icon(
+                              Icons.image_not_supported,
+                              color: kBrandRed,
+                              size: 36,
+                            ),
                           ),
                         )
                       : Container(
                           height: 160,
                           width: double.infinity,
                           color: kBrandRedSoft,
-                          child: const Icon(Icons.shopping_bag,
-                              color: kBrandRed, size: 36),
+                          child: const Icon(
+                            Icons.shopping_bag,
+                            color: kBrandRed,
+                            size: 36,
+                          ),
                         ),
                 ),
                 Positioned(
@@ -1541,8 +834,11 @@ class _ProductCardState extends State<ProductCard> {
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 14),
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 14,
+                            ),
                             const SizedBox(width: 2),
                             Text(
                               widget.product.rating.toString(),

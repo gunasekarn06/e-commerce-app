@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../app_language.dart';
 import '../services/api_service.dart';
 import 'edit_profile.dart';
+import 'language.dart';
 
 // ===== Brand Colors =====
 const Color kBrandRed = Color(0xFFE4252A);
@@ -19,14 +21,15 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final AppLanguageController _languageController =
+      AppLanguageController.instance;
   late Map<String, dynamic> _userData;
-  bool _isLoading = true;
 
   String get _fullName =>
       (_userData['full_name'] ?? _userData['name'] ?? 'User').toString();
   String get _email => (_userData['email'] ?? 'No email').toString();
-  String get _phone =>
-      (_userData['phone'] ?? '+1 000 000 0000').toString();
+  String get _phone => (_userData['phone'] ?? '+1 000 000 0000').toString();
+  String get _languageLabel => _languageController.current.profileLabel;
   String? get _imageUrl =>
       (_userData['image_url'] ?? _userData['photoUrl'])?.toString();
   String get _initial =>
@@ -42,18 +45,16 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUserData() async {
     final userId = widget.userData['id'];
     if (userId == null) {
-      setState(() => _isLoading = false);
       return;
     }
 
-    final updatedUser = await ApiService.getUser(id: userId is int ? userId : int.tryParse(userId.toString()) ?? 0);
+    final updatedUser = await ApiService.getUser(
+      id: userId is int ? userId : int.tryParse(userId.toString()) ?? 0,
+    );
     if (updatedUser != null && mounted) {
       setState(() {
         _userData = updatedUser;
-        _isLoading = false;
       });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -79,7 +80,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     final updatedUser = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => EditProfilePage(userData: _userData),
+                        builder: (context) =>
+                            EditProfilePage(userData: _userData),
                       ),
                     );
                     if (updatedUser is Map<String, dynamic>) {
@@ -114,8 +116,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 _ActionItem(
                   icon: Icons.language_rounded,
                   title: 'Language',
-                  subtitle: 'English (US)',
-                  onTap: () {},
+                  subtitle: _languageLabel,
+                  onTap: () async {
+                    final selectedLanguage = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LanguagePage(),
+                      ),
+                    );
+                    if (selectedLanguage != null && mounted) {
+                      setState(() {});
+                    }
+                  },
                 ),
                 _ActionItem(
                   icon: Icons.help_outline_rounded,
@@ -180,7 +192,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.5),
+                    width: 2,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.18),
@@ -220,8 +235,11 @@ class _ProfilePageState extends State<ProfilePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.mail_outline_rounded,
-                      color: Colors.white70, size: 16),
+                  const Icon(
+                    Icons.mail_outline_rounded,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     _email,
@@ -234,12 +252,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.phone_android_rounded,
-                        color: Colors.white70, size: 16),
+                    const Icon(
+                      Icons.phone_android_rounded,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       _phone,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -247,21 +271,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _circleIconButton(IconData icon, VoidCallback onTap) {
-    return Material(
-      color: Colors.white.withOpacity(0.18),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
       ),
     );
   }
@@ -297,11 +306,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _divider() => Container(
-        width: 1,
-        height: 36,
-        color: kCardBorder,
-      );
+  Widget _divider() => Container(width: 1, height: 36, color: kCardBorder);
 
   Widget _statTile(IconData icon, String value, String label) {
     return Expanded(
@@ -317,10 +322,7 @@ class _ProfilePageState extends State<ProfilePage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(
-            label,
-            style: const TextStyle(color: kTextMuted, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(color: kTextMuted, fontSize: 12)),
         ],
       ),
     );
@@ -394,7 +396,10 @@ class _ProfilePageState extends State<ProfilePage> {
           child: ElevatedButton.icon(
             onPressed: () {
               Navigator.pushNamedAndRemoveUntil(
-                  context, '/LoginPage', (route) => false);
+                context,
+                '/LoginPage',
+                (route) => false,
+              );
             },
             icon: const Icon(Icons.logout_rounded, size: 20),
             label: const Text(
@@ -471,14 +476,16 @@ class _ActionItem extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                          color: kTextMuted, fontSize: 12.5),
+                      style: const TextStyle(color: kTextMuted, fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: kTextMuted, size: 22),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: kTextMuted,
+                size: 22,
+              ),
             ],
           ),
         ),
